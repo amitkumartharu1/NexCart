@@ -1,10 +1,17 @@
 /**
- * Prisma Client singleton — Prisma 7 + driver adapter setup.
+ * Prisma Client singleton — Node.js runtime only.
  *
- * Prisma 7 requires a driver adapter instead of reading DATABASE_URL
- * from the environment implicitly. We use @prisma/adapter-pg with the
- * standard `pg` package for PostgreSQL.
+ * Prisma 7 requires a driver adapter. We use @prisma/adapter-pg with pg.
+ * This file MUST NOT be imported from middleware or any Edge-runtime code.
  */
+
+// Hard fail if somehow loaded in Edge runtime
+if (typeof (globalThis as Record<string, unknown>)["EdgeRuntime"] !== "undefined") {
+  throw new Error(
+    "[NexCart] lib/db/prisma.ts was imported in the Edge runtime. " +
+      "This is a bug — do not import database code from middleware or Edge routes."
+  );
+}
 
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -14,8 +21,8 @@ function createPrismaClient(): PrismaClient {
 
   if (!connectionString) {
     throw new Error(
-      "DATABASE_URL is not set. Add it to your .env file.\n" +
-        "Example: DATABASE_URL=\"postgresql://postgres:password@localhost:5432/nexcart\""
+      "DATABASE_URL is not set.\n" +
+        'Add it to your .env file: DATABASE_URL="postgresql://user:pass@localhost:5432/nexcart"'
     );
   }
 
@@ -23,14 +30,10 @@ function createPrismaClient(): PrismaClient {
 
   return new PrismaClient({
     adapter,
-    log:
-      process.env.NODE_ENV === "development"
-        ? ["error", "warn"]
-        : ["error"],
+    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });
 }
 
-// Prevent multiple Prisma client instances during Next.js hot reload in dev
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };

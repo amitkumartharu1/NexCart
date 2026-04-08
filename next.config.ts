@@ -1,75 +1,47 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Image optimization — whitelist external domains as needed
   images: {
     remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "res.cloudinary.com",
-      },
-      {
-        protocol: "https",
-        hostname: "*.amazonaws.com",
-      },
-      {
-        protocol: "https",
-        hostname: "lh3.googleusercontent.com", // Google OAuth avatars
-      },
-      {
-        protocol: "https",
-        hostname: "avatars.githubusercontent.com", // GitHub OAuth
-      },
+      { protocol: "https", hostname: "res.cloudinary.com" },
+      { protocol: "https", hostname: "*.amazonaws.com" },
+      { protocol: "https", hostname: "lh3.googleusercontent.com" },
+      { protocol: "https", hostname: "avatars.githubusercontent.com" },
     ],
   },
 
-  // Server-only packages — prevent accidental client-side import
-  serverExternalPackages: ["argon2", "@prisma/client", "prisma"],
+  // Prevent these Node.js-only packages from being bundled into
+  // Server Components or the Edge runtime by Turbopack/webpack.
+  serverExternalPackages: [
+    "argon2",
+    "bcryptjs",
+    "@prisma/client",
+    "@prisma/adapter-pg",
+    "prisma",
+    "pg",
+    "pg-native",
+  ],
 
-  // Security headers
+  // Security headers on every response
   async headers() {
     return [
       {
         source: "/(.*)",
         headers: [
-          {
-            key: "X-Content-Type-Options",
-            value: "nosniff",
-          },
-          {
-            key: "X-Frame-Options",
-            value: "DENY",
-          },
-          {
-            key: "X-XSS-Protection",
-            value: "1; mode=block",
-          },
-          {
-            key: "Referrer-Policy",
-            value: "strict-origin-when-cross-origin",
-          },
-          {
-            key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=()",
-          },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "X-XSS-Protection", value: "1; mode=block" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
         ],
       },
     ];
   },
 
-  // Redirects
   async redirects() {
     return [
-      {
-        source: "/admin",
-        destination: "/admin/dashboard",
-        permanent: false,
-      },
-      {
-        source: "/dashboard",
-        destination: "/dashboard/profile",
-        permanent: false,
-      },
+      { source: "/admin", destination: "/admin/dashboard", permanent: false },
+      { source: "/dashboard", destination: "/dashboard/profile", permanent: false },
     ];
   },
 };

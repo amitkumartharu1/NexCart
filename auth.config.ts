@@ -1,24 +1,25 @@
 /**
  * Edge-compatible Auth.js configuration.
  *
- * This file MUST NOT import any Node.js-only modules:
- * - No prisma / pg / database drivers
- * - No argon2 / bcrypt
- * - No crypto (Node.js built-in)
- * - No fs, path, etc.
+ * STRICT RULE: This file must have ZERO imports that pull in Node.js modules.
+ * No prisma, pg, argon2, bcrypt, crypto, fs, path — nothing.
+ * The only allowed import is the type-only NextAuthConfig from next-auth.
  *
- * It is used by:
- * - middleware.ts  (runs on Edge runtime)
+ * Used by:
+ * - middleware.ts (Edge runtime)
  *
- * The full auth config (auth.ts) extends this with Prisma adapter,
- * Credentials provider, and database callbacks — all Node.js runtime only.
+ * The full config (auth.ts) extends this with Prisma + Node.js providers.
  */
 
 import type { NextAuthConfig } from "next-auth";
 
-const ADMIN_ROLES = new Set(["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF"]);
+// Defined locally — do NOT import from @prisma/client here.
+// That import would pull pg → Node.js crypto into the Edge bundle.
+type UserRole = "SUPER_ADMIN" | "ADMIN" | "MANAGER" | "STAFF" | "CUSTOMER";
 
-export const authConfig: NextAuthConfig = {
+const ADMIN_ROLES = new Set<string>(["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF"]);
+
+export const authConfig = {
   session: {
     strategy: "jwt",
     maxAge: parseInt(process.env.SESSION_MAX_AGE_DAYS ?? "30") * 24 * 60 * 60,
@@ -30,35 +31,21 @@ export const authConfig: NextAuthConfig = {
     verifyRequest: "/auth/verify",
   },
 
-  // No providers here — added in auth.ts (Node.js only)
   providers: [],
 
   callbacks: {
-    /**
-     * authorized — runs on every request matched by middleware.
-     * Called with the JWT token already decoded (edge-safe).
-     * Returns true to allow, false/redirect to block.
-     */
     authorized({ auth, request: { nextUrl } }) {
       const pathname = nextUrl.pathname;
       const isAuthenticated = !!auth?.user;
-      const role = auth?.user?.role as string | undefined;
+      const role = (auth?.user as { role?: string } | undefined)?.role;
 
-      const isAdminRoute = pathname.startsWith("/admin");
-      const isProtectedRoute =
-        pathname.startsWith("/dashboard") || pathname.startsWith("/checkout");
-      const isAuthPage =
-        pathname.startsWith("/auth/login") ||
-        pathname.startsWith("/auth/register") ||
-        pathname.startsWith("/auth/forgot-password");
-
-      // Force suspended accounts to suspended page
+      // Suspended accounts → suspended page
       if (isAuthenticated && (auth as { error?: string }).error === "AccountSuspended") {
         return Response.redirect(new URL("/auth/suspended", nextUrl));
       }
 
       // Admin routes
-      if (isAdminRoute) {
+      if (pathname.startsWith("/admin")) {
         if (!isAuthenticated) {
           const url = new URL("/auth/login", nextUrl);
           url.searchParams.set("callbackUrl", pathname);
@@ -71,7 +58,7 @@ export const authConfig: NextAuthConfig = {
       }
 
       // Protected customer routes
-      if (isProtectedRoute) {
+      if (pathname.startsWith("/dashboard") || pathname.startsWith("/checkout")) {
         if (!isAuthenticated) {
           const url = new URL("/auth/login", nextUrl);
           url.searchParams.set("callbackUrl", pathname);
@@ -80,19 +67,22 @@ export const authConfig: NextAuthConfig = {
         return true;
       }
 
-      // Auth pages — redirect if already logged in
-      if (isAuthPage && isAuthenticated) {
-        const dest =
-          role && ADMIN_ROLES.has(role)
-            ? "/admin/dashboard"
-            : "/dashboard/profile";
-        return Response.redirect(new URL(dest, nextUrl));
+      // Auth pages — redirect away if already logged in
+      if (
+        pathname.startsWith("/auth/login") ||
+        pathname.startsWith("/auth/register") ||
+        pathname.startsWith("/auth/forgot-password")
+      ) {
+        if (isAuthenticated) {
+          const dest =
+            role && ADMIN_ROLES.has(role) ? "/admin/dashboard" : "/dashboard/profile";
+          return Response.redirect(new URL(dest, nextUrl));
+        }
       }
 
       return true;
     },
 
-    // JWT and session callbacks live here so they work in both Edge and Node
     async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id as string;
@@ -101,14 +91,15 @@ export const authConfig: NextAuthConfig = {
           (user as { emailVerified?: Date | null }).emailVerified ?? null;
       }
       if (trigger === "update" && session?.role) {
-        token.role = session.role;
+        token.role = session.role as string;
       }
       return token;
     },
 
     async session({ session, token }) {
       if (token.id) session.user.id = token.id as string;
-      if (token.role) session.user.role = token.role as import("@prisma/client").UserRole;
+      // Cast locally — avoids importing @prisma/client which pulls in pg/crypto
+      if (token.role) session.user.role = token.role as UserRole;
       if (token.emailVerified !== undefined) {
         session.user.emailVerified = token.emailVerified as Date | null;
       }
@@ -120,4 +111,4 @@ export const authConfig: NextAuthConfig = {
   },
 
   trustHost: true,
-};
+} satisfies NextAuthConfig;
