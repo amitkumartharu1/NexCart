@@ -1,26 +1,222 @@
 @import "tailwindcss";
 
+/* ==========================================================================
+   NexCart Design System — CSS Custom Properties
+   Premium dark/light theme. Apple-level cleanliness.
+   ========================================================================== */
+
 :root {
+  /* Background scale */
   --background: #ffffff;
-  --foreground: #171717;
+  --background-subtle: #f9fafb;
+  --background-muted: #f3f4f6;
+
+  /* Foreground scale */
+  --foreground: #0a0a0a;
+  --foreground-muted: #6b7280;
+  --foreground-subtle: #9ca3af;
+
+  /* Brand — emerald */
+  --primary: #059669;
+  --primary-hover: #047857;
+  --primary-foreground: #ffffff;
+  --primary-subtle: #ecfdf5;
+
+  /* Card / surface */
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+  --card-border: #e5e7eb;
+
+  /* Border */
+  --border: #e5e7eb;
+  --border-strong: #d1d5db;
+
+  /* Input */
+  --input: #e5e7eb;
+  --ring: #059669;
+
+  /* Semantic */
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --warning: #d97706;
+  --success: #059669;
+
+  /* Accent */
+  --accent: #f3f4f6;
+  --accent-foreground: #0a0a0a;
+
+  /* Muted */
+  --muted: #f3f4f6;
+  --muted-foreground: #6b7280;
+
+  /* Popover */
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+
+  /* Secondary */
+  --secondary: #f3f4f6;
+  --secondary-foreground: #0a0a0a;
+
+  /* Radius */
+  --radius: 0.75rem;
+  --radius-sm: 0.5rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.5rem;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-premium: 0 0 0 1px rgb(0 0 0 / 0.05), 0 8px 24px rgb(0 0 0 / 0.08);
 }
 
+/* Dark mode */
+.dark,
+[data-theme="dark"] {
+  --background: #080c10;
+  --background-subtle: #0d1117;
+  --background-muted: #161b22;
+
+  --foreground: #f0f6fc;
+  --foreground-muted: #8b949e;
+  --foreground-subtle: #6e7681;
+
+  --primary: #10b981;
+  --primary-hover: #34d399;
+  --primary-foreground: #080c10;
+  --primary-subtle: #022c22;
+
+  --card: #0d1117;
+  --card-foreground: #f0f6fc;
+  --card-border: #21262d;
+
+  --border: #21262d;
+  --border-strong: #30363d;
+
+  --input: #21262d;
+  --ring: #10b981;
+
+  --destructive: #f85149;
+  --destructive-foreground: #ffffff;
+
+  --accent: #161b22;
+  --accent-foreground: #f0f6fc;
+
+  --muted: #161b22;
+  --muted-foreground: #8b949e;
+
+  --popover: #161b22;
+  --popover-foreground: #f0f6fc;
+
+  --secondary: #21262d;
+  --secondary-foreground: #f0f6fc;
+
+  --shadow-premium: 0 0 0 1px rgb(255 255 255 / 0.05), 0 8px 24px rgb(0 0 0 / 0.4);
+}
+
+/* ==========================================================================
+   Tailwind v4 theme mapping
+   ========================================================================== */
 @theme inline {
   --color-background: var(--background);
+  --color-background-subtle: var(--background-subtle);
+  --color-background-muted: var(--background-muted);
   --color-foreground: var(--foreground);
+  --color-foreground-muted: var(--foreground-muted);
+  --color-foreground-subtle: var(--foreground-subtle);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-subtle: var(--primary-subtle);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-card-border: var(--card-border);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  --radius-sm: var(--radius-sm);
+  --radius-DEFAULT: var(--radius);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ==========================================================================
+   Base styles
+   ========================================================================== */
+*, *::before, *::after {
+  box-sizing: border-box;
+  border-color: var(--border);
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ==========================================================================
+   Scrollbar — minimal premium style
+   ========================================================================== */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--foreground-subtle); }
+
+/* ==========================================================================
+   Utility classes
+   ========================================================================== */
+.container-narrow { max-width: 72rem; margin-inline: auto; padding-inline: 1.5rem; }
+.container-wide   { max-width: 90rem; margin-inline: auto; padding-inline: 1.5rem; }
+
+/* Premium card */
+.card-premium {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-premium);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, var(--foreground) 0%, var(--primary) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Focus ring */
+.focus-ring:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* Smooth transitions */
+.transition-base {
+  transition: color 150ms ease, background-color 150ms ease,
+    border-color 150ms ease, box-shadow 150ms ease, opacity 150ms ease;
 }
