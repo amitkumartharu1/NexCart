@@ -42,6 +42,7 @@ export interface ActionResult<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
+  message?: string;
   fieldErrors?: Partial<Record<string, string>>;
 }
 
