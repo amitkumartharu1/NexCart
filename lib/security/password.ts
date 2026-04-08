@@ -73,9 +73,13 @@ export async function verifyPassword(
 
 /**
  * Generate a cryptographically secure random token.
+ * Uses Web Crypto API (works in Node.js, Edge, and browser).
  * Used for email verification and password reset.
  */
 export function generateSecureToken(length = 48): string {
-  const { randomBytes } = require("crypto") as typeof import("crypto");
-  return randomBytes(length).toString("hex");
+  const bytes = new Uint8Array(length);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }

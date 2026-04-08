@@ -1,10 +1,19 @@
 /**
- * Auth.js v5 configuration for NexCart.
+ * Full Auth.js v5 configuration — Node.js runtime only.
  *
- * Exports: auth, handlers, signIn, signOut
- * - auth()       → get session in Server Components / API routes
- * - handlers     → GET/POST handlers for /api/auth/[...nextauth]
- * - signIn/Out   → call from Server Actions
+ * Extends auth.config.ts with:
+ * - Prisma adapter (requires pg driver)
+ * - Credentials provider (requires argon2/bcrypt)
+ * - Google OAuth
+ * - DB callbacks (role refresh, audit logging)
+ *
+ * Import from here in:
+ * - Server Components
+ * - Server Actions
+ * - API routes
+ * - app/api/auth/[...nextauth]/route.ts
+ *
+ * DO NOT import from middleware.ts — use auth.config.ts there.
  */
 
 import NextAuth from "next-auth";
@@ -15,21 +24,13 @@ import { prisma } from "@/lib/db";
 import { verifyPassword } from "@/lib/security/password";
 import { auditLoginAttempt } from "@/lib/security/audit";
 import { loginSchema } from "@/lib/validations/auth";
+import { authConfig } from "./auth.config";
 import type { UserRole } from "@prisma/client";
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
+  ...authConfig,
+
   adapter: PrismaAdapter(prisma),
-
-  session: {
-    strategy: "jwt",
-    maxAge: parseInt(process.env.SESSION_MAX_AGE_DAYS ?? "30") * 24 * 60 * 60,
-  },
-
-  pages: {
-    signIn: "/auth/login",
-    error: "/auth/error",
-    verifyRequest: "/auth/verify",
-  },
 
   providers: [
     // -----------------------------------------------------------------
@@ -43,20 +44,15 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials, request) {
-        // Extract IP for audit logging
         const ip =
           request?.headers?.get?.("x-forwarded-for") ??
           request?.headers?.get?.("x-real-ip") ??
           null;
 
-        // Validate input shape
         const parsed = loginSchema.safeParse(credentials);
-        if (!parsed.success) {
-          return null;
-        }
+        if (!parsed.success) return null;
         const { email, password } = parsed.data;
 
-        // Find user
         const user = await prisma.user.findUnique({
           where: { email: email.toLowerCase() },
           select: {
@@ -83,7 +79,6 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           return null;
         }
 
-        // Check account status
         if (user.status === "SUSPENDED") {
           await auditLoginAttempt({
             userId: user.id,
@@ -106,7 +101,6 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           throw new Error("AccountInactive");
         }
 
-        // Verify password
         const valid = await verifyPassword(password, user.passwordHash);
         if (!valid) {
           await auditLoginAttempt({
@@ -119,13 +113,9 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           return null;
         }
 
-        // Update last login
         await prisma.user.update({
           where: { id: user.id },
-          data: {
-            lastLoginAt: new Date(),
-            lastLoginIp: ip,
-          },
+          data: { lastLoginAt: new Date(), lastLoginIp: ip },
         });
 
         await auditLoginAttempt({
@@ -138,7 +128,9 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         return {
           id: user.id,
           email: user.email,
-          name: user.name ?? `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim(),
+          name:
+            user.name ??
+            `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim(),
           image: user.image,
           role: user.role,
           emailVerified: user.emailVerified,
@@ -147,7 +139,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     }),
 
     // -----------------------------------------------------------------
-    // Google OAuth (enabled when env vars are set)
+    // Google OAuth
     // -----------------------------------------------------------------
     ...(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET
       ? [
@@ -161,25 +153,23 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
   ],
 
   callbacks: {
-    // -------------------------------------------------------------------
-    // jwt callback: persists role into the JWT token
-    // Called every time a JWT is created or updated
-    // -------------------------------------------------------------------
+    ...authConfig.callbacks,
+
+    // Override jwt to also do DB role refresh (Node.js only — has prisma access)
     async jwt({ token, user, trigger, session }) {
-      // Initial sign-in — attach role from user object
+      // Initial sign-in
       if (user) {
         token.id = user.id as string;
         token.role = (user as { role?: UserRole }).role ?? "CUSTOMER";
-        token.emailVerified = (user as { emailVerified?: Date | null }).emailVerified ?? null;
+        token.emailVerified =
+          (user as { emailVerified?: Date | null }).emailVerified ?? null;
       }
 
-      // Handle session update (called via update() from client)
       if (trigger === "update" && session?.role) {
         token.role = session.role;
       }
 
-      // Refresh role from DB on each request (keeps role changes live)
-      // Only do this every 5 minutes to avoid hammering DB
+      // Refresh role from DB every 5 minutes to pick up role/status changes
       if (token.id && !user) {
         const now = Date.now();
         const lastRefresh = (token.lastRoleRefresh as number) ?? 0;
@@ -191,7 +181,6 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           if (dbUser) {
             token.role = dbUser.role;
             if (dbUser.status === "SUSPENDED") {
-              // Force sign-out by invalidating token
               return { ...token, error: "AccountSuspended" };
             }
           }
@@ -201,33 +190,25 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
 
       return token;
     },
+  },
 
-    // -------------------------------------------------------------------
-    // session callback: exposes token data to useSession() / auth()
-    // -------------------------------------------------------------------
-    async session({ session, token }) {
-      if (token.id) {
-        session.user.id = token.id as string;
+  events: {
+    async signOut(message) {
+      const token = "token" in message ? message.token : null;
+      const actorId = token?.id as string | undefined;
+      if (actorId) {
+        try {
+          await prisma.auditLog.create({
+            data: { actorId, action: "LOGOUT", resource: "Session" },
+          });
+        } catch {
+          // Non-critical
+        }
       }
-      if (token.role) {
-        session.user.role = token.role as UserRole;
-      }
-      if (token.emailVerified !== undefined) {
-        session.user.emailVerified = token.emailVerified as Date | null;
-      }
-      if (token.error) {
-        (session as { error?: string }).error = token.error as string;
-      }
-      return session;
     },
 
-    // -------------------------------------------------------------------
-    // signIn callback: runs after successful OAuth sign-in
-    // Used to set default role for new OAuth users
-    // -------------------------------------------------------------------
     async signIn({ user, account }) {
       if (account?.provider !== "credentials" && user.email) {
-        // Ensure OAuth users have CUSTOMER role and ACTIVE status
         await prisma.user.upsert({
           where: { email: user.email },
           update: {},
@@ -241,31 +222,8 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           },
         });
       }
-      return true;
     },
   },
 
-  events: {
-    async signOut(message) {
-      // Log sign-out in audit trail (JWT strategy passes token)
-      const token = "token" in message ? message.token : null;
-      const actorId = token?.id as string | undefined;
-      if (actorId) {
-        try {
-          await prisma.auditLog.create({
-            data: {
-              actorId,
-              action: "LOGOUT",
-              resource: "Session",
-            },
-          });
-        } catch {
-          // Non-critical
-        }
-      }
-    },
-  },
-
-  trustHost: true,
   debug: process.env.NODE_ENV === "development",
 });
