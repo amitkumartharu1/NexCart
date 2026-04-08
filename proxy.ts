@@ -1,5 +1,6 @@
 /**
- * NexCart Middleware — Edge Runtime
+ * NexCart Proxy — Edge Runtime
+ * (Next.js 16 renamed "middleware" to "proxy")
  *
  * Uses auth.config.ts (edge-safe, no Node.js deps).
  * Route protection logic lives in authConfig.callbacks.authorized.
