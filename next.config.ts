@@ -15,16 +15,12 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "**" },
       { protocol: "http",  hostname: "**" },
     ],
-    // Allow locally-stored uploads (product images + avatars saved to /public/uploads/)
-    localPatterns: [
-      { pathname: "/uploads/**" },
-    ],
   },
 
   // Prevent these Node.js-only packages from being bundled into
   // Server Components or the Edge runtime by Turbopack/webpack.
   serverExternalPackages: [
-    "argon2",
+    "argon2",      // optional — falls back to bcryptjs if native build unavailable
     "bcryptjs",
     "@prisma/client",
     "@prisma/adapter-pg",
@@ -32,6 +28,11 @@ const nextConfig: NextConfig = {
     "pg",
     "pg-native",
   ],
+
+  // Suppress the NODE_ENV warning — Vercel sets this correctly at runtime
+  env: {
+    NEXT_SUPPRESS_ENV_WARNING: "1",
+  },
 
   // Security headers on every response
   async headers() {
