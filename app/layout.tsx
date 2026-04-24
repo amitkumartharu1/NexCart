@@ -7,6 +7,7 @@ import { CartDrawer } from "@/components/cart/CartDrawer";
 import { Toaster } from "sonner";
 import { auth } from "@/auth";
 import { getGlobalCurrency } from "@/lib/currency.server";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -89,6 +90,7 @@ export default async function RootLayout({
             </CurrencyProvider>
           </AuthProvider>
         </ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );
