@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { CurrencyProvider } from "@/components/providers/CurrencyProvider";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { Toaster } from "sonner";
+import { Analytics } from "@vercel/analytics/next";
 import { auth } from "@/auth";
 import { getGlobalCurrency } from "@/lib/currency.server";
 import "./globals.css";
@@ -86,6 +87,7 @@ export default async function RootLayout({
               {children}
               <CartDrawer />
               <Toaster richColors position="top-right" />
+              <Analytics />
             </CurrencyProvider>
           </AuthProvider>
         </ThemeProvider>
