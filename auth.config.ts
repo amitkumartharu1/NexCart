@@ -84,15 +84,35 @@ export const authConfig = {
         return true;
       }
 
-      // ── Private website: ALL remaining routes require authentication ────────
-      // This covers /, /products/*, /shop/*, /cart, /checkout,
-      // /dashboard/*, /wishlist, /search, /categories/*, /services/*, etc.
+      // ── Public routes — no login required ────────────────────────────────────
+      const publicPaths = [
+        "/",
+        "/shop",
+        "/products",
+        "/categories",
+        "/brands",
+        "/services",
+        "/search",
+        "/blog",
+        "/about",
+        "/contact",
+        "/faq",
+        "/press",
+        "/careers",
+        "/policies",
+        "/wishlist",
+        "/cart",
+      ];
+      const isPublic = publicPaths.some(
+        (p) => pathname === p || pathname.startsWith(p + "/")
+      );
+      if (isPublic) return true;
+
+      // ── Protected routes — require login ──────────────────────────────────────
+      // /checkout, /dashboard/*, and anything else not listed above
       if (!isAuthenticated) {
         const url = new URL("/auth/login", nextUrl);
-        // Preserve the intended destination (skip for homepage to keep URL clean)
-        if (pathname !== "/") {
-          url.searchParams.set("callbackUrl", pathname);
-        }
+        url.searchParams.set("callbackUrl", pathname);
         return Response.redirect(url);
       }
 

@@ -7,9 +7,10 @@ import Link from "next/link";
 
 interface LoginFormProps {
   callbackUrl?: string;
+  googleEnabled?: boolean;
 }
 
-export function LoginForm({ callbackUrl }: LoginFormProps) {
+export function LoginForm({ callbackUrl, googleEnabled = false }: LoginFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -113,24 +114,28 @@ export function LoginForm({ callbackUrl }: LoginFormProps) {
         {isLoading ? "Signing in…" : "Sign in"}
       </button>
 
-      {/* Google OAuth */}
-      <div className="relative">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-border" />
-        </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-background px-2 text-muted-foreground">Or</span>
-        </div>
-      </div>
+      {/* Google OAuth — only shown when credentials are configured */}
+      {googleEnabled && (
+        <>
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">Or</span>
+            </div>
+          </div>
 
-      <button
-        type="button"
-        onClick={() => signIn("google", { callbackUrl: redirectTo })}
-        disabled={isLoading}
-        className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-60"
-      >
-        Continue with Google
-      </button>
+          <button
+            type="button"
+            onClick={() => signIn("google", { callbackUrl: redirectTo })}
+            disabled={isLoading}
+            className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-medium transition-colors hover:bg-accent disabled:opacity-60"
+          >
+            Continue with Google
+          </button>
+        </>
+      )}
     </form>
   );
 }

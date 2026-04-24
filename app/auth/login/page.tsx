@@ -43,7 +43,10 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           </div>
         )}
 
-        <LoginForm callbackUrl={callbackUrl} />
+        <LoginForm
+          callbackUrl={callbackUrl}
+          googleEnabled={!!(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET)}
+        />
 
         <p className="text-center text-sm text-muted-foreground">
           Don&apos;t have an account?{" "}
