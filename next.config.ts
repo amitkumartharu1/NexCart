@@ -3,10 +3,21 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
+      // Known CDNs / OAuth avatars
       { protocol: "https", hostname: "res.cloudinary.com" },
-      { protocol: "https", hostname: "*.amazonaws.com" },
       { protocol: "https", hostname: "lh3.googleusercontent.com" },
       { protocol: "https", hostname: "avatars.githubusercontent.com" },
+      // Demo / seed data placeholder images
+      { protocol: "https", hostname: "picsum.photos" },
+      { protocol: "https", hostname: "fastly.picsum.photos" },
+      { protocol: "https", hostname: "images.unsplash.com" },
+      // Allow any https host for admin-entered asset URLs (section builder, etc.)
+      { protocol: "https", hostname: "**" },
+      { protocol: "http",  hostname: "**" },
+    ],
+    // Allow locally-stored uploads (product images + avatars saved to /public/uploads/)
+    localPatterns: [
+      { pathname: "/uploads/**" },
     ],
   },
 

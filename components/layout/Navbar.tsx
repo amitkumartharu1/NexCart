@@ -2,12 +2,15 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import { ShoppingCart, Search, Menu, X, User, Heart, ChevronDown, Package } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
+import { useCartStore } from "@/lib/store/cart";
+import { PromoBar } from "@/components/home/PromoBar";
 
 const NAV_LINKS = [
-  { label: "Shop", href: "/shop" },
+  { label: "Shop", href: "/shop", sale: true },
   { label: "Services", href: "/services" },
   { label: "Categories", href: "/categories" },
   { label: "Brands", href: "/brands" },
@@ -16,6 +19,7 @@ const NAV_LINKS = [
 
 export function Navbar() {
   const { data: session } = useSession();
+  const pathname = usePathname();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -27,10 +31,14 @@ export function Navbar() {
   }, []);
 
   // Close menus on route change
-  useEffect(() => { setMobileOpen(false); setUserMenuOpen(false); }, []);
+  useEffect(() => { setMobileOpen(false); setUserMenuOpen(false); }, [pathname]);
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   const isAdmin = session?.user?.role &&
     ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF"].includes(session.user.role);
+  const { toggleCart, itemCount } = useCartStore();
 
   return (
     <header
@@ -41,6 +49,7 @@ export function Navbar() {
           : "bg-transparent"
       )}
     >
+      <PromoBar />
       <div className="container-wide">
         <div className="flex items-center justify-between h-16 md:h-18">
 
@@ -53,15 +62,31 @@ export function Navbar() {
 
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-1">
-            {NAV_LINKS.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="px-3 py-2 text-sm font-medium text-foreground-muted hover:text-foreground rounded-lg hover:bg-accent transition-colors duration-150"
-              >
-                {link.label}
-              </Link>
-            ))}
+            {NAV_LINKS.map((link) => {
+              const isActive = pathname === link.href || (link.href !== "/" && pathname.startsWith(link.href));
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={cn(
+                    "relative px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-150 flex items-center gap-1.5",
+                    isActive
+                      ? "text-foreground bg-accent font-semibold"
+                      : "text-foreground-muted hover:text-foreground hover:bg-accent"
+                  )}
+                >
+                  {link.label}
+                  {link.sale && (
+                    <span className="text-[9px] font-black bg-red-500 text-white px-1.5 py-0.5 rounded-full uppercase tracking-wide leading-none">
+                      SALE
+                    </span>
+                  )}
+                  {isActive && (
+                    <span className="absolute bottom-0.5 left-3 right-3 h-0.5 bg-primary rounded-full" />
+                  )}
+                </Link>
+              );
+            })}
           </nav>
 
           {/* Desktop Actions */}
@@ -85,15 +110,18 @@ export function Navbar() {
             </Link>
 
             {/* Cart */}
-            <Link
-              href="/cart"
+            <button
+              onClick={toggleCart}
               className="relative p-2.5 rounded-lg text-foreground-muted hover:text-foreground hover:bg-accent transition-colors"
               aria-label="Cart"
             >
               <ShoppingCart size={18} />
-              {/* Cart badge — wired to store in Phase 6 */}
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full" />
-            </Link>
+              {mounted && itemCount() > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-primary text-primary-foreground text-xs font-bold rounded-full flex items-center justify-center px-1">
+                  {itemCount()}
+                </span>
+              )}
+            </button>
 
             {/* User menu */}
             {session ? (
@@ -153,10 +181,14 @@ export function Navbar() {
 
           {/* Mobile: cart + hamburger */}
           <div className="flex md:hidden items-center gap-1">
-            <Link href="/cart" className="relative p-2.5 rounded-lg text-foreground-muted" aria-label="Cart">
+            <button onClick={toggleCart} className="relative p-2.5 rounded-lg text-foreground-muted" aria-label="Cart">
               <ShoppingCart size={18} />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full" />
-            </Link>
+              {mounted && itemCount() > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-primary text-primary-foreground text-xs font-bold rounded-full flex items-center justify-center px-1">
+                  {itemCount()}
+                </span>
+              )}
+            </button>
             <button
               onClick={() => setMobileOpen((v) => !v)}
               className="p-2.5 rounded-lg text-foreground-muted hover:bg-accent transition-colors"
@@ -172,16 +204,29 @@ export function Navbar() {
       {mobileOpen && (
         <div className="md:hidden border-t border-border bg-background/95 backdrop-blur-md">
           <nav className="container-wide py-4 space-y-1">
-            {NAV_LINKS.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="block px-3 py-2.5 text-sm font-medium text-foreground-muted hover:text-foreground hover:bg-accent rounded-lg transition-colors"
-                onClick={() => setMobileOpen(false)}
-              >
-                {link.label}
-              </Link>
-            ))}
+            {NAV_LINKS.map((link) => {
+              const isActive = pathname === link.href || (link.href !== "/" && pathname.startsWith(link.href));
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors",
+                    isActive
+                      ? "text-foreground bg-accent font-semibold"
+                      : "text-foreground-muted hover:text-foreground hover:bg-accent"
+                  )}
+                  onClick={() => setMobileOpen(false)}
+                >
+                  {link.label}
+                  {link.sale && (
+                    <span className="text-[9px] font-black bg-red-500 text-white px-1.5 py-0.5 rounded-full uppercase tracking-wide leading-none">
+                      SALE
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
             <div className="border-t border-border pt-3 mt-3 space-y-1">
               {session ? (
                 <>

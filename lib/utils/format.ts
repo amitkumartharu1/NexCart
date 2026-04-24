@@ -1,18 +1,59 @@
 import { format, formatDistanceToNow, isValid, parseISO } from "date-fns";
 
 // =============================================================================
+// Active-currency module singleton (client-side only)
+//
+// CurrencyProvider calls _setActiveCurrency() synchronously during render so
+// every formatCurrency() call that follows uses the correct code/locale.
+// On the server this stays at the environment-variable defaults — server
+// components that need DB currency should call getGlobalCurrency() + pass it
+// explicitly, or use formatWithCurrency() from lib/currency.ts directly.
+// =============================================================================
+
+let _activeCurrency: string = process.env.NEXT_PUBLIC_CURRENCY ?? "USD";
+let _activeLocale: string  = process.env.NEXT_PUBLIC_DEFAULT_LOCALE ?? "en-US";
+let _activeSymbol: string  = process.env.NEXT_PUBLIC_CURRENCY_SYMBOL ?? "$";
+
+/** Called by CurrencyProvider during its synchronous render phase. */
+export function _setActiveCurrency(
+  code: string,
+  locale: string,
+  symbol: string
+): void {
+  // Guard: only mutate on the client — module is shared across requests on the server.
+  if (typeof window === "undefined") return;
+  _activeCurrency = code;
+  _activeLocale   = locale;
+  _activeSymbol   = symbol;
+}
+
+// =============================================================================
 // Currency
 // =============================================================================
 
-const DEFAULT_CURRENCY = process.env.NEXT_PUBLIC_CURRENCY ?? "USD";
-const DEFAULT_LOCALE = process.env.NEXT_PUBLIC_DEFAULT_LOCALE ?? "en-US";
-
+/**
+ * Format a monetary value.
+ *
+ * When called with no explicit `currency` / `locale` it uses whatever
+ * CurrencyProvider has set as the active currency (defaults to env vars).
+ *
+ * NPR special-case: Intl outputs "NPR 1,234.56" — we reformat to "Rs. 1,234.56".
+ */
 export function formatCurrency(
   amount: number | string | null | undefined,
-  currency = DEFAULT_CURRENCY,
-  locale = DEFAULT_LOCALE
+  currency: string = _activeCurrency,
+  locale: string   = _activeLocale
 ): string {
   const value = Number(amount ?? 0);
+
+  if (currency === "NPR") {
+    const formatted = new Intl.NumberFormat("en-NP", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
+    return `Rs.\u00a0${formatted}`;
+  }
+
   return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
@@ -23,10 +64,19 @@ export function formatCurrency(
 
 export function formatCurrencyCompact(
   amount: number | string | null | undefined,
-  currency = DEFAULT_CURRENCY,
-  locale = DEFAULT_LOCALE
+  currency: string = _activeCurrency,
+  locale: string   = _activeLocale
 ): string {
   const value = Number(amount ?? 0);
+
+  if (currency === "NPR") {
+    const formatted = new Intl.NumberFormat("en-NP", {
+      notation: "compact",
+      maximumFractionDigits: 1,
+    }).format(value);
+    return `Rs.\u00a0${formatted}`;
+  }
+
   return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
@@ -35,20 +85,25 @@ export function formatCurrencyCompact(
   }).format(value);
 }
 
+/** Returns the active currency symbol ($ or Rs.) */
+export function getCurrencySymbol(): string {
+  return _activeSymbol;
+}
+
 // =============================================================================
 // Numbers
 // =============================================================================
 
 export function formatNumber(
   value: number | string | null | undefined,
-  locale = DEFAULT_LOCALE
+  locale = _activeLocale
 ): string {
   return new Intl.NumberFormat(locale).format(Number(value ?? 0));
 }
 
 export function formatPercent(
   value: number,
-  locale = DEFAULT_LOCALE
+  locale = _activeLocale
 ): string {
   return new Intl.NumberFormat(locale, {
     style: "percent",

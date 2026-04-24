@@ -42,86 +42,111 @@ export async function registerAction(
   _prev: ActionResult,
   formData: FormData
 ): Promise<ActionResult> {
-  const ip = await getClientIp();
+  try {
+    const ip = await getClientIp();
 
-  // Rate limit by IP
-  const rl = await rateLimit("register", ip, RATE_LIMITS.register);
-  if (!rl.success) {
-    return { success: false, error: "Too many registration attempts. Please wait and try again." };
-  }
+    // Rate limit by IP
+    const rl = await rateLimit("register", ip, RATE_LIMITS.register).catch(() => ({
+      success: true,
+      remaining: 99,
+      resetAt: 0,
+    }));
+    if (!rl.success) {
+      return { success: false, error: "Too many registration attempts. Please wait and try again." };
+    }
 
-  const raw = {
-    firstName: formData.get("firstName") as string,
-    lastName: formData.get("lastName") as string,
-    email: formData.get("email") as string,
-    password: formData.get("password") as string,
-    confirmPassword: formData.get("confirmPassword") as string,
-  };
+    const raw = {
+      firstName: formData.get("firstName") as string,
+      lastName: formData.get("lastName") as string,
+      email: formData.get("email") as string,
+      phone: (formData.get("phone") as string) || undefined,
+      password: formData.get("password") as string,
+      confirmPassword: formData.get("confirmPassword") as string,
+    };
 
-  const parsed = registerSchema.safeParse(raw);
-  if (!parsed.success) {
-    const fieldErrors: Record<string, string> = {};
-    parsed.error.issues.forEach((e: import("zod").ZodIssue) => {
-      const field = e.path[0] as string;
-      fieldErrors[field] = e.message;
+    const parsed = registerSchema.safeParse(raw);
+    if (!parsed.success) {
+      const fieldErrors: Record<string, string> = {};
+      parsed.error.issues.forEach((e: import("zod").ZodIssue) => {
+        const field = e.path[0] as string;
+        fieldErrors[field] = e.message;
+      });
+      return { success: false, fieldErrors };
+    }
+
+    const { firstName, lastName, email, phone, password } = parsed.data;
+    const normalizedEmail = email.toLowerCase();
+
+    // Check duplicate
+    const existing = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      select: { id: true },
     });
-    return { success: false, fieldErrors };
+
+    if (existing) {
+      return { success: false, fieldErrors: { email: "An account with this email already exists." } };
+    }
+
+    // Hash password (argon2 with bcryptjs fallback)
+    const passwordHash = await hashPassword(password);
+
+    // Generate email verification token
+    const emailVerifyToken = generateSecureToken();
+    const emailVerifyExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
+
+    // Create user
+    const user = await prisma.user.create({
+      data: {
+        email: normalizedEmail,
+        firstName,
+        lastName,
+        name: `${firstName} ${lastName}`,
+        phone: phone ?? null,
+        passwordHash,
+        role: "CUSTOMER",
+        // Set ACTIVE immediately since email verification is not yet integrated.
+        // When email service is configured, change to PENDING_VERIFICATION.
+        status: "ACTIVE",
+        emailVerifyToken,
+        emailVerifyExpiry,
+      },
+      select: { id: true, email: true },
+    });
+
+    // Audit (non-critical — don't fail registration if audit fails)
+    await audit({
+      actorId: user.id,
+      action: "CREATE",
+      resource: "User",
+      resourceId: user.id,
+      ipAddress: ip,
+      metadata: { registrationMethod: "credentials" },
+    }).catch(() => {});
+
+    return {
+      success: true,
+      message: "Account created successfully! You can now sign in.",
+      data: { userId: user.id },
+    };
+  } catch (err) {
+    console.error("[registerAction]", err);
+    // Give specific messages for the most common failures
+    const msg = err instanceof Error ? err.message : String(err);
+    const code = (err as Record<string, unknown>)?.code as string | undefined;
+    const message =
+      msg.includes("DATABASE_URL")
+        ? "Database is not configured. Please contact support."
+        : code === "P1001" || msg.includes("ECONNREFUSED") || msg.includes("connect ECONNREFUSED")
+        ? "Cannot connect to the database. Please try again later."
+        : code === "P1003" || code === "P2021" || code === "P2022" || msg.includes("does not exist in the current database")
+        ? "Database tables are missing. Please run: npx prisma migrate dev"
+        : code === "P2002"
+        ? "An account with this email already exists."
+        : msg.includes("connect") || msg.includes("timed out") || msg.includes("timeout")
+        ? "Cannot connect to the database. Please try again later."
+        : `Registration failed (${code ?? "unknown"}). Check server logs.`;
+    return { success: false, error: message };
   }
-
-  const { firstName, lastName, email, password } = parsed.data;
-  const normalizedEmail = email.toLowerCase();
-
-  // Check duplicate
-  const existing = await prisma.user.findUnique({
-    where: { email: normalizedEmail },
-    select: { id: true },
-  });
-
-  if (existing) {
-    return { success: false, fieldErrors: { email: "An account with this email already exists." } };
-  }
-
-  // Hash password
-  const passwordHash = await hashPassword(password);
-
-  // Generate email verification token
-  const emailVerifyToken = generateSecureToken();
-  const emailVerifyExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
-
-  // Create user
-  const user = await prisma.user.create({
-    data: {
-      email: normalizedEmail,
-      firstName,
-      lastName,
-      name: `${firstName} ${lastName}`,
-      passwordHash,
-      role: "CUSTOMER",
-      status: "PENDING_VERIFICATION",
-      emailVerifyToken,
-      emailVerifyExpiry,
-    },
-    select: { id: true, email: true },
-  });
-
-  // Audit
-  await audit({
-    actorId: user.id,
-    action: "CREATE",
-    resource: "User",
-    resourceId: user.id,
-    ipAddress: ip,
-    metadata: { registrationMethod: "credentials" },
-  });
-
-  // TODO (Phase 2 extension): Send verification email
-  // await sendVerificationEmail(user.email, emailVerifyToken);
-
-  return {
-    success: true,
-    message: "Account created! Please check your email to verify your account.",
-    data: { userId: user.id },
-  };
 }
 
 // ---------------------------------------------------------------------------
@@ -131,59 +156,69 @@ export async function forgotPasswordAction(
   _prev: ActionResult,
   formData: FormData
 ): Promise<ActionResult> {
-  const ip = await getClientIp();
+  try {
+    const ip = await getClientIp();
 
-  const rl = await rateLimit("forgot_password", ip, RATE_LIMITS.forgotPassword);
-  if (!rl.success) {
-    return { success: false, error: "Too many requests. Please wait before trying again." };
-  }
+    const rl = await rateLimit("forgot_password", ip, RATE_LIMITS.forgotPassword).catch(() => ({
+      success: true,
+      remaining: 99,
+      resetAt: 0,
+    }));
+    if (!rl.success) {
+      return { success: false, error: "Too many requests. Please wait before trying again." };
+    }
 
-  const parsed = forgotPasswordSchema.safeParse({
-    email: formData.get("email"),
-  });
-
-  if (!parsed.success) {
-    return { success: false, fieldErrors: { email: "Please enter a valid email address." } };
-  }
-
-  const email = parsed.data.email.toLowerCase();
-
-  // Always return success to prevent email enumeration
-  const user = await prisma.user.findUnique({
-    where: { email },
-    select: { id: true, status: true },
-  });
-
-  if (user && user.status === "ACTIVE") {
-    const token = generateSecureToken();
-    const expiry = new Date(
-      Date.now() +
-        parseInt(process.env.PASSWORD_RESET_EXPIRY_HOURS ?? "2") * 60 * 60 * 1000
-    );
-
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { passwordResetToken: token, passwordResetExpiry: expiry },
+    const parsed = forgotPasswordSchema.safeParse({
+      email: formData.get("email"),
     });
 
-    // TODO (Phase 2 extension): Send reset email
-    // await sendPasswordResetEmail(email, token);
+    if (!parsed.success) {
+      return { success: false, fieldErrors: { email: "Please enter a valid email address." } };
+    }
 
-    await audit({
-      actorId: user.id,
-      action: "PASSWORD_CHANGE",
-      resource: "User",
-      resourceId: user.id,
-      ipAddress: ip,
-      metadata: { step: "reset_requested" },
+    const email = parsed.data.email.toLowerCase();
+
+    // Always return success to prevent email enumeration
+    const user = await prisma.user.findUnique({
+      where: { email },
+      select: { id: true, status: true },
     });
-  }
 
-  // Always return success (prevent email enumeration)
-  return {
-    success: true,
-    message: "If an account exists with that email, you will receive a reset link shortly.",
-  };
+    if (user && user.status === "ACTIVE") {
+      const token = generateSecureToken();
+      const expiry = new Date(
+        Date.now() +
+          parseInt(process.env.PASSWORD_RESET_EXPIRY_HOURS ?? "2") * 60 * 60 * 1000
+      );
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { passwordResetToken: token, passwordResetExpiry: expiry },
+      });
+
+      await audit({
+        actorId: user.id,
+        action: "PASSWORD_CHANGE",
+        resource: "User",
+        resourceId: user.id,
+        ipAddress: ip,
+        metadata: { step: "reset_requested" },
+      }).catch(() => {});
+    }
+
+    // Always return success (prevent email enumeration)
+    return {
+      success: true,
+      message: "If an account exists with that email, you will receive a reset link shortly.",
+    };
+  } catch (err) {
+    console.error("[forgotPasswordAction]", err);
+    // Still return success to prevent email enumeration
+    return {
+      success: true,
+      message: "If an account exists with that email, you will receive a reset link shortly.",
+    };
+  }
 }
 
 // ---------------------------------------------------------------------------

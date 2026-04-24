@@ -10,9 +10,11 @@
 
 import "dotenv/config";
 import { PrismaClient, UserRole, UserStatus } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { hashPassword } from "../lib/security/password";
 
-const prisma = new PrismaClient();
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
   console.log("🌱 Starting NexCart database seed...\n");
@@ -156,6 +158,105 @@ async function main() {
   console.log(`✅ Service categories seeded (${serviceCategories.length})`);
 
   // ===========================================================================
+  // Sample Brands
+  // ===========================================================================
+
+  const brands = [
+    { name: "Apple",   slug: "apple",   isActive: true, isFeatured: true,  sortOrder: 1 },
+    { name: "Samsung", slug: "samsung", isActive: true, isFeatured: true,  sortOrder: 2 },
+    { name: "Sony",    slug: "sony",    isActive: true, isFeatured: true,  sortOrder: 3 },
+    { name: "ASUS",    slug: "asus",    isActive: true, isFeatured: false, sortOrder: 4 },
+    { name: "Nike",    slug: "nike",    isActive: true, isFeatured: true,  sortOrder: 5 },
+    { name: "Logitech",slug: "logitech",isActive: true, isFeatured: false, sortOrder: 6 },
+  ];
+
+  for (const brand of brands) {
+    await prisma.brand.upsert({ where: { slug: brand.slug }, update: {}, create: brand });
+  }
+  console.log(`✅ Brands seeded (${brands.length})`);
+
+  // ===========================================================================
+  // Sample Products (with images + inventory)
+  // Images use picsum.photos — deterministic by seed name, always accessible.
+  // ===========================================================================
+
+  // Upsert each demo product by slug — safe to re-run; skips slugs that already exist.
+  {
+    // Fetch category and brand IDs
+    const catMap = Object.fromEntries(
+      (await prisma.category.findMany({ select: { slug: true, id: true } })).map((c) => [c.slug, c.id])
+    );
+    const brandMap = Object.fromEntries(
+      (await prisma.brand.findMany({ select: { slug: true, id: true } })).map((b) => [b.slug, b.id])
+    );
+
+    // img(seed) — returns a consistent 800×800 picsum image
+    const img = (seed: string) => `https://picsum.photos/seed/${seed}/800/800`;
+
+    const products = [
+      // Electronics
+      { name: "Pro Wireless Headphones X1",  slug: "pro-wireless-headphones-x1",  sku: "HP-X1-001", shortDescription: "Studio-grade sound with 40-hour battery life.",           categorySlug: "electronics",   brandSlug: "sony",    status: "ACTIVE" as const, isFeatured: true,  basePrice: "149.99", comparePrice: "199.99", image: img("headphones1"),   stock: 85  },
+      { name: 'UltraBook Laptop 15"',          slug: "ultrabook-laptop-15",           sku: "LT-UB-002", shortDescription: "Slim, powerful laptop for professionals and creators.",  categorySlug: "electronics",   brandSlug: "asus",    status: "ACTIVE" as const, isFeatured: true,  basePrice: "1099.00",comparePrice: "1299.00",image: img("laptop15"),      stock: 40  },
+      { name: '4K Smart LED TV 55"',           slug: "4k-smart-led-tv-55",            sku: "TV-4K-003", shortDescription: "Stunning 4K HDR display with built-in streaming apps.",  categorySlug: "electronics",   brandSlug: "samsung", status: "ACTIVE" as const, isFeatured: false, basePrice: "599.00", comparePrice: "749.00", image: img("smarttv55"),     stock: 22  },
+      { name: "Smart Watch Series 9",          slug: "smart-watch-series-9",          sku: "SW-S9-004", shortDescription: "Health tracking, GPS, and always-on display.",           categorySlug: "gadgets",       brandSlug: "apple",   status: "ACTIVE" as const, isFeatured: true,  basePrice: "329.00", comparePrice: "399.00", image: img("smartwatch9"),   stock: 60  },
+      { name: "Portable Bluetooth Speaker",    slug: "portable-bluetooth-speaker",    sku: "SP-BT-005", shortDescription: "360° surround sound with 20-hour playtime.",             categorySlug: "gadgets",       brandSlug: "sony",    status: "ACTIVE" as const, isFeatured: false, basePrice: "79.99",  comparePrice: "99.99",  image: img("btspeaker"),     stock: 120 },
+      { name: "Wireless Charging Pad Pro",     slug: "wireless-charging-pad-pro",     sku: "CH-WL-006", shortDescription: "Fast Qi wireless charging for all compatible devices.", categorySlug: "gadgets",       brandSlug: "samsung", status: "ACTIVE" as const, isFeatured: false, basePrice: "34.99",  comparePrice: null,     image: img("chargerpad"),    stock: 200 },
+      { name: "Gaming Mechanical Keyboard",    slug: "gaming-mechanical-keyboard",    sku: "KB-MK-007", shortDescription: "RGB backlit mechanical keyboard with tactile switches.", categorySlug: "gaming",        brandSlug: "logitech",status: "ACTIVE" as const, isFeatured: true,  basePrice: "119.99", comparePrice: "149.99", image: img("mechkeyboard"),  stock: 75  },
+      { name: "Pro Gaming Mouse 8K",           slug: "pro-gaming-mouse-8k",           sku: "MS-G8-008", shortDescription: "8000 DPI precision sensor with 11 programmable buttons.",categorySlug: "gaming",        brandSlug: "logitech",status: "ACTIVE" as const, isFeatured: false, basePrice: "69.99",  comparePrice: "89.99",  image: img("gamingmouse8k"), stock: 95  },
+      { name: "Gaming Headset 7.1 Surround",   slug: "gaming-headset-71-surround",    sku: "HS-G7-009", shortDescription: "Virtual 7.1 surround sound for immersive gaming audio.", categorySlug: "gaming",        brandSlug: "sony",    status: "ACTIVE" as const, isFeatured: false, basePrice: "89.99",  comparePrice: "119.99", image: img("gamingheadset"), stock: 50  },
+      { name: "Athletic Running Shoes",        slug: "athletic-running-shoes",        sku: "SH-AR-010", shortDescription: "Lightweight, breathable running shoes for all terrain.", categorySlug: "fashion",       brandSlug: "nike",    status: "ACTIVE" as const, isFeatured: true,  basePrice: "129.00", comparePrice: "159.00", image: img("runningshoes"),  stock: 150 },
+      { name: "Classic Polo T-Shirt",          slug: "classic-polo-t-shirt",          sku: "TS-CL-011", shortDescription: "Premium cotton polo, slim-fit, available in 8 colors.", categorySlug: "fashion",       brandSlug: "nike",    status: "ACTIVE" as const, isFeatured: false, basePrice: "39.99",  comparePrice: "55.00",  image: img("poloshirt"),     stock: 300 },
+      { name: "Smart Home Hub",                slug: "smart-home-hub",                sku: "SH-HB-012", shortDescription: "Control all your smart home devices from one place.",   categorySlug: "smart-devices", brandSlug: "samsung", status: "ACTIVE" as const, isFeatured: false, basePrice: "89.00",  comparePrice: "109.00", image: img("smarthomehub"), stock: 45  },
+      { name: "Smartphone Pro Max 256GB",      slug: "smartphone-pro-max-256gb",      sku: "SP-PM-013", shortDescription: '6.7" OLED, triple camera, 5G, all-day battery.',       categorySlug: "smart-devices", brandSlug: "apple",   status: "ACTIVE" as const, isFeatured: true,  basePrice: "1199.00",comparePrice: null,     image: img("smartphone13"),  stock: 35  },
+      { name: "Ergonomic Office Chair",        slug: "ergonomic-office-chair",        sku: "CH-EO-014", shortDescription: "Lumbar support, adjustable armrests, mesh back.",        categorySlug: "home-office",   brandSlug: "asus",    status: "ACTIVE" as const, isFeatured: false, basePrice: "249.00", comparePrice: "329.00", image: img("officechair"),   stock: 28  },
+      { name: "Premium Laptop Backpack",       slug: "premium-laptop-backpack",       sku: "BP-LP-015", shortDescription: "Water-resistant 30L backpack with USB charging port.",  categorySlug: "accessories",   brandSlug: "nike",    status: "ACTIVE" as const, isFeatured: false, basePrice: "69.99",  comparePrice: "89.99",  image: img("laptopbag"),     stock: 88  },
+      { name: "USB-C Hub 10-in-1",             slug: "usb-c-hub-10-in-1",             sku: "HB-UC-016", shortDescription: "HDMI 4K, 3×USB-A, SD card, Ethernet and more.",         categorySlug: "accessories",   brandSlug: "logitech",status: "ACTIVE" as const, isFeatured: false, basePrice: "49.99",  comparePrice: "64.99",  image: img("usbchub"),       stock: 160 },
+    ];
+
+    let seeded = 0;
+    for (const p of products) {
+      const exists = await prisma.product.findUnique({ where: { slug: p.slug }, select: { id: true } });
+      if (exists) continue;
+      const product = await prisma.product.create({
+        data: {
+          name: p.name,
+          slug: p.slug,
+          sku: p.sku,
+          shortDescription: p.shortDescription,
+          categoryId: catMap[p.categorySlug] ?? null,
+          brandId: brandMap[p.brandSlug] ?? null,
+          status: p.status,
+          isFeatured: p.isFeatured,
+          basePrice: p.basePrice,
+          comparePrice: p.comparePrice ?? null,
+          publishedAt: new Date(),
+          images: {
+            create: {
+              url: p.image,
+              altText: p.name,
+              isPrimary: true,
+              sortOrder: 0,
+              provider: "LOCAL",
+            },
+          },
+          inventory: {
+            create: {
+              quantity: p.stock,
+              lowStockThreshold: 10,
+              trackInventory: true,
+              lastRestockedAt: new Date(),
+            },
+          },
+        },
+      });
+      void product;
+      seeded++;
+    }
+    if (seeded > 0) console.log(`✅ Demo products seeded (${seeded}) with images + inventory`);
+    else console.log("⏭  All demo products already exist, skipping");
+  }
+
+  // ===========================================================================
   // Sample FAQs
   // ===========================================================================
 
@@ -164,7 +265,7 @@ async function main() {
     await prisma.fAQ.createMany({
       data: [
         { question: "How do I track my order?", answer: "You can track your order in your dashboard under Order History. You will also receive email updates with tracking information.", category: "Orders", sortOrder: 1, isActive: true, isFeatured: true },
-        { question: "What is your return policy?", answer: "We offer a 30-day hassle-free return policy for all products in original condition. Services can be cancelled up to 24 hours before the scheduled time.", category: "Returns", sortOrder: 2, isActive: true, isFeatured: true },
+        { question: "What is your return policy?", answer: "We offer a 14-day hassle-free return policy for all products in original condition. Services can be cancelled up to 24 hours before the scheduled time.", category: "Returns", sortOrder: 2, isActive: true, isFeatured: true },
         { question: "How do I book a service?", answer: "Navigate to the Services section, choose your desired service, select a package if applicable, and click 'Book Now'. You'll receive a confirmation within 24 hours.", category: "Services", sortOrder: 3, isActive: true, isFeatured: true },
         { question: "What payment methods do you accept?", answer: "We accept all major credit/debit cards via Stripe. Additional payment methods may be available depending on your region.", category: "Payments", sortOrder: 4, isActive: true, isFeatured: false },
         { question: "Is my personal information secure?", answer: "Yes. We use industry-standard encryption (TLS 1.3), never store plain passwords, and follow strict data protection practices. Read our Privacy Policy for full details.", category: "Security", sortOrder: 5, isActive: true, isFeatured: false },

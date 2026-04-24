@@ -18,6 +18,12 @@ export const registerSchema = z
     firstName: z.string().min(1, "First name is required").max(50),
     lastName: z.string().min(1, "Last name is required").max(50),
     email: z.string().email("Invalid email address"),
+    phone: z
+      .string()
+      .optional()
+      .refine((v) => !v || /^\+?[0-9\s\-()]{7,20}$/.test(v), {
+        message: "Enter a valid phone number",
+      }),
     password: passwordSchema,
     confirmPassword: z.string(),
   })

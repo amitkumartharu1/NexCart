@@ -38,16 +38,21 @@ export function validatePasswordStrength(password: string): {
 
 export async function hashPassword(password: string): Promise<string> {
   if (ALGORITHM === "argon2") {
-    const argon2 = await import("argon2");
-    return argon2.hash(password, {
-      type: argon2.argon2id,
-      memoryCost: 65536, // 64 MB
-      timeCost: 3,
-      parallelism: 4,
-    });
+    try {
+      const argon2 = await import("argon2");
+      return await argon2.hash(password, {
+        type: argon2.argon2id,
+        memoryCost: 65536,
+        timeCost: 3,
+        parallelism: 4,
+      });
+    } catch {
+      // argon2 native module not available (common on Windows). Fall back to bcryptjs.
+      console.warn("[Password] argon2 unavailable, falling back to bcryptjs");
+    }
   }
 
-  // Fallback: bcrypt
+  // bcryptjs — pure JS, works everywhere
   const bcrypt = await import("bcryptjs");
   const salt = await bcrypt.genSalt(12);
   return bcrypt.hash(password, salt);

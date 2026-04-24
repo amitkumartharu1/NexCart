@@ -6,7 +6,7 @@
  * The only allowed import is the type-only NextAuthConfig from next-auth.
  *
  * Used by:
- * - middleware.ts (Edge runtime)
+ * - proxy.ts (Edge runtime)
  *
  * The full config (auth.ts) extends this with Prisma + Node.js providers.
  */
@@ -39,12 +39,39 @@ export const authConfig = {
       const isAuthenticated = !!auth?.user;
       const role = (auth?.user as { role?: string } | undefined)?.role;
 
-      // Suspended accounts → suspended page
-      if (isAuthenticated && (auth as { error?: string }).error === "AccountSuspended") {
+      // ── Suspended accounts ─────────────────────────────────────────────────
+      if (
+        isAuthenticated &&
+        (auth as { error?: string }).error === "AccountSuspended" &&
+        pathname !== "/auth/suspended"
+      ) {
         return Response.redirect(new URL("/auth/suspended", nextUrl));
       }
 
-      // Admin routes
+      // ── Auth pages ─────────────────────────────────────────────────────────
+      // Never block /auth/* — but redirect authenticated users away from them
+      if (pathname.startsWith("/auth/")) {
+        if (
+          isAuthenticated &&
+          !pathname.startsWith("/auth/suspended") &&
+          !pathname.startsWith("/auth/error")
+        ) {
+          // Already logged in → send to appropriate home
+          const dest =
+            role && ADMIN_ROLES.has(role) ? "/admin/dashboard" : "/";
+          return Response.redirect(new URL(dest, nextUrl));
+        }
+        return true; // allow unauthenticated access to auth pages
+      }
+
+      // ── API routes ─────────────────────────────────────────────────────────
+      // Let each API handler enforce its own auth checks (returns 401/403).
+      // The proxy only handles page-level redirects.
+      if (pathname.startsWith("/api/")) {
+        return true;
+      }
+
+      // ── Admin routes ───────────────────────────────────────────────────────
       if (pathname.startsWith("/admin")) {
         if (!isAuthenticated) {
           const url = new URL("/auth/login", nextUrl);
@@ -57,27 +84,16 @@ export const authConfig = {
         return true;
       }
 
-      // Protected customer routes
-      if (pathname.startsWith("/dashboard") || pathname.startsWith("/checkout")) {
-        if (!isAuthenticated) {
-          const url = new URL("/auth/login", nextUrl);
+      // ── Private website: ALL remaining routes require authentication ────────
+      // This covers /, /products/*, /shop/*, /cart, /checkout,
+      // /dashboard/*, /wishlist, /search, /categories/*, /services/*, etc.
+      if (!isAuthenticated) {
+        const url = new URL("/auth/login", nextUrl);
+        // Preserve the intended destination (skip for homepage to keep URL clean)
+        if (pathname !== "/") {
           url.searchParams.set("callbackUrl", pathname);
-          return Response.redirect(url);
         }
-        return true;
-      }
-
-      // Auth pages — redirect away if already logged in
-      if (
-        pathname.startsWith("/auth/login") ||
-        pathname.startsWith("/auth/register") ||
-        pathname.startsWith("/auth/forgot-password")
-      ) {
-        if (isAuthenticated) {
-          const dest =
-            role && ADMIN_ROLES.has(role) ? "/admin/dashboard" : "/dashboard/profile";
-          return Response.redirect(new URL(dest, nextUrl));
-        }
+        return Response.redirect(url);
       }
 
       return true;

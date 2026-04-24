@@ -5,8 +5,8 @@
       "name": "Next.js Dev Server",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
-      "port": 3000,
-      "autoPort": true
+      "port": 3001,
+      "autoPort": false
     },
     {
       "name": "Prisma Studio",

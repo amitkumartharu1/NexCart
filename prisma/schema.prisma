@@ -45,12 +45,14 @@ enum ServiceStatus {
 
 enum OrderStatus {
   PENDING
+  PAYMENT_VERIFICATION
   CONFIRMED
   PROCESSING
   SHIPPED
   OUT_FOR_DELIVERY
   DELIVERED
   CANCELLED
+  FAILED
   REFUNDED
   PARTIALLY_REFUNDED
   RETURN_REQUESTED
@@ -58,6 +60,7 @@ enum OrderStatus {
 }
 
 enum PaymentStatus {
+  UNPAID
   PENDING
   PROCESSING
   COMPLETED
@@ -72,6 +75,8 @@ enum PaymentMethod {
   PAYPAL
   BANK_TRANSFER
   CASH_ON_DELIVERY
+  ESEWA
+  KHALTI
   STORE_CREDIT
   OTHER
 }
@@ -149,6 +154,7 @@ enum InventoryMovementType {
   ADJUSTMENT
   DAMAGE
   INITIAL_STOCK
+  RESTOCK
 }
 
 // =============================================================================
@@ -368,6 +374,7 @@ model Product {
   compareItems  CompareItem[]
   reviews       Review[]
   seoMeta       SeoMeta?
+  sections     ProductSection[]
 
   @@index([slug])
   @@index([categoryId])
@@ -375,6 +382,48 @@ model Product {
   @@index([status])
   @@index([isFeatured])
   @@map("products")
+}
+
+// Product visual storytelling sections (3D/4D motion + static)
+model ProductSection {
+  id        String  @id @default(cuid())
+  productId String
+
+  // Section type
+  // "image_banner" | "3d_showcase" | "motion_banner" | "text_block" | "feature_list" | "cta_section"
+  type      String
+
+  // Rendering mode: "static" | "3d" | "4d"
+  mode      String  @default("static")
+
+  sortOrder Int     @default(0)
+  isVisible Boolean @default(true)
+
+  // Content
+  title    String?
+  subtitle String?
+  body     String? @db.Text
+
+  // Primary asset (image URL, video URL, or 3D model URL)
+  assetUrl  String?
+  assetType String? // "image" | "video" | "model3d"
+
+  // CTA
+  ctaText  String?
+  ctaUrl   String?
+  ctaStyle String? @default("primary") // "primary" | "secondary" | "ghost"
+
+  // Flexible settings: animation speed, colors, effects, feature items JSON, etc.
+  settings Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([productId, sortOrder])
+  @@map("product_sections")
 }
 
 model ProductImage {
@@ -451,14 +500,15 @@ model ProductAttribute {
 }
 
 model Inventory {
-  id                String   @id @default(cuid())
-  productId         String   @unique
-  quantity          Int      @default(0)
-  reservedQuantity  Int      @default(0)
-  lowStockThreshold Int      @default(5)
-  trackInventory    Boolean  @default(true)
-  allowBackorder    Boolean  @default(false)
-  updatedAt         DateTime @updatedAt
+  id                String    @id @default(cuid())
+  productId         String    @unique
+  quantity          Int       @default(0)
+  reservedQuantity  Int       @default(0)
+  lowStockThreshold Int       @default(5)
+  trackInventory    Boolean   @default(true)
+  allowBackorder    Boolean   @default(false)
+  lastRestockedAt   DateTime?
+  updatedAt         DateTime  @updatedAt
 
   product   Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
   movements InventoryMovement[]
@@ -749,12 +799,17 @@ model Payment {
   method            PaymentMethod
   provider          String
   providerPaymentId String?
-  status            PaymentStatus @default(PENDING)
+  status            PaymentStatus @default(UNPAID)
   amount            Decimal       @db.Decimal(10, 2)
-  currency          String        @default("USD")
+  currency          String        @default("NPR")
   refundedAmount    Decimal       @default(0) @db.Decimal(10, 2)
   metadata          Json?
   errorMessage      String?
+  // Manual verification fields
+  manualTransactionId String?     @unique
+  proofImage        String?
+  verifiedBy        String?
+  verifiedAt        DateTime?
   paidAt            DateTime?
   refundedAt        DateTime?
   createdAt         DateTime      @default(now())

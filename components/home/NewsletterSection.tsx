@@ -59,6 +59,7 @@ export function NewsletterSection() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="your@email.com"
                   required
+                  suppressHydrationWarning
                   className="flex-1 px-4 py-3 rounded-xl border border-border bg-background text-sm placeholder:text-foreground-muted focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring"
                 />
                 <button

@@ -1,7 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AuthProvider } from "@/components/auth/AuthProvider";
+import { ThemeProvider } from "@/components/providers/ThemeProvider";
+import { CurrencyProvider } from "@/components/providers/CurrencyProvider";
+import { CartDrawer } from "@/components/cart/CartDrawer";
+import { Toaster } from "sonner";
 import { auth } from "@/auth";
+import { getGlobalCurrency } from "@/lib/currency.server";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -43,8 +48,8 @@ export const metadata: Metadata = {
     description: "Smart Shopping. Modern Services. One Premium Platform.",
   },
   robots: {
-    index: true,
-    follow: true,
+    index: false, // Private platform — no indexing
+    follow: false,
   },
 };
 
@@ -62,7 +67,11 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await auth();
+  // Fetch both in parallel — no waterfall
+  const [session, initialCurrency] = await Promise.all([
+    auth(),
+    getGlobalCurrency(),
+  ]);
 
   return (
     <html
@@ -70,10 +79,16 @@ export default async function RootLayout({
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable}`}
     >
-      <body className="min-h-screen antialiased">
-        <AuthProvider session={session}>
-          {children}
-        </AuthProvider>
+      <body className="min-h-screen antialiased" suppressHydrationWarning>
+        <ThemeProvider>
+          <AuthProvider session={session}>
+            <CurrencyProvider initialCurrency={initialCurrency}>
+              {children}
+              <CartDrawer />
+              <Toaster richColors position="top-right" />
+            </CurrencyProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
