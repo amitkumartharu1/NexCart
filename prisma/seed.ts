@@ -215,7 +215,11 @@ async function main() {
 
     let seeded = 0;
     for (const p of products) {
-      const exists = await prisma.product.findUnique({ where: { slug: p.slug }, select: { id: true } });
+      // Check both slug AND sku to avoid unique constraint crashes on re-runs
+      const exists = await prisma.product.findFirst({
+        where: { OR: [{ slug: p.slug }, { sku: p.sku }] },
+        select: { id: true },
+      });
       if (exists) continue;
       const product = await prisma.product.create({
         data: {
