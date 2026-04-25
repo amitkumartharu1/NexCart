@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/db/prisma";
-import { HeroSection, type HeroBanner, type HeroSettings } from "@/components/home/HeroSection";
+import { HeroSection, type HeroBanner, type HeroSettings, type FeaturedProduct } from "@/components/home/HeroSection";
 import { FeaturedCategories } from "@/components/home/FeaturedCategories";
 import { TrendingProducts } from "@/components/home/TrendingProducts";
 import { FeaturedServices } from "@/components/home/FeaturedServices";
@@ -24,9 +24,10 @@ async function getHeroData(): Promise<{
   settings: Partial<HeroSettings>;
   bgImage: string | null;
   overlayOpacity: string | null;
+  featuredProduct: FeaturedProduct | null;
 }> {
   try {
-    const [bannerRow, settingsRows] = await Promise.all([
+    const [bannerRow, settingsRows, featuredProductRow] = await Promise.all([
       // First active HERO banner
       prisma.banner.findFirst({
         where: { position: "HERO", isActive: true },
@@ -59,6 +60,48 @@ async function getHeroData(): Promise<{
         },
         select: { key: true, value: true },
       }),
+      // A featured product to show in the hero card
+      prisma.product.findFirst({
+        where: { status: "ACTIVE", isFeatured: true },
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          basePrice: true,
+          comparePrice: true,
+          category: { select: { name: true } },
+          images: {
+            take: 1,
+            orderBy: { sortOrder: "asc" },
+            select: { url: true, altText: true },
+          },
+        },
+      }).then((p) =>
+        // If no featured product, fall back to any active product with an image
+        p
+          ? p
+          : prisma.product.findFirst({
+              where: {
+                status: "ACTIVE",
+                images: { some: {} },
+              },
+              orderBy: { viewCount: "desc" },
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                basePrice: true,
+                comparePrice: true,
+                category: { select: { name: true } },
+                images: {
+                  take: 1,
+                  orderBy: { sortOrder: "asc" },
+                  select: { url: true, altText: true },
+                },
+              },
+            })
+      ),
     ]);
 
     const settingsMap = Object.fromEntries(settingsRows.map((r) => [r.key, r.value]));
@@ -71,23 +114,43 @@ async function getHeroData(): Promise<{
       ...(settingsMap.hero_cta_secondary_url ? { ctaSecondaryUrl: settingsMap.hero_cta_secondary_url } : {}),
     };
 
+    const fp = featuredProductRow;
+    const featuredProduct: FeaturedProduct | null = fp
+      ? {
+          name:         fp.name,
+          slug:         fp.slug,
+          basePrice:    Number(fp.basePrice),
+          comparePrice: fp.comparePrice ? Number(fp.comparePrice) : null,
+          category:     fp.category?.name ?? null,
+          imageUrl:     fp.images[0]?.url ?? null,
+          imageAlt:     fp.images[0]?.altText ?? fp.name,
+        }
+      : null;
+
     return {
       banner: bannerRow as HeroBanner | null,
       settings,
       bgImage: settingsMap.hero_bg_image ?? null,
       overlayOpacity: settingsMap.hero_overlay_opacity ?? null,
+      featuredProduct,
     };
   } catch {
-    return { banner: null, settings: {}, bgImage: null, overlayOpacity: null };
+    return { banner: null, settings: {}, bgImage: null, overlayOpacity: null, featuredProduct: null };
   }
 }
 
 export default async function HomePage() {
-  const { banner, settings, bgImage, overlayOpacity } = await getHeroData();
+  const { banner, settings, bgImage, overlayOpacity, featuredProduct } = await getHeroData();
 
   return (
     <div className="flex flex-col">
-      <HeroSection banner={banner} settings={settings} bgImage={bgImage} overlayOpacity={overlayOpacity} />
+      <HeroSection
+        banner={banner}
+        settings={settings}
+        bgImage={bgImage}
+        overlayOpacity={overlayOpacity}
+        featuredProduct={featuredProduct}
+      />
       <FeaturedCategories />
       <RecentlyRestocked />
       <OfferSection />

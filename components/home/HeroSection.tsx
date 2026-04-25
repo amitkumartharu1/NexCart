@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, ShieldCheck, Zap, Star, Truck, Headphones } from "lucide-react";
+import { formatCurrency } from "@/lib/utils/format";
 
 // Default hero background — premium laptop photo
 const DEFAULT_BG = "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?q=80&w=2560&fit=crop";
@@ -43,6 +44,15 @@ export interface HeroSettings {
   ctaPrimary: string; ctaPrimaryUrl: string;
   ctaSecondary: string; ctaSecondaryUrl: string;
 }
+export interface FeaturedProduct {
+  name: string;
+  slug: string;
+  basePrice: number;
+  comparePrice: number | null;
+  category: string | null;
+  imageUrl: string | null;
+  imageAlt: string;
+}
 
 const DEFAULTS: HeroSettings = {
   title: "Upgrade Your Tech Experience",
@@ -56,9 +66,10 @@ interface HeroSectionProps {
   settings?: Partial<HeroSettings> | null;
   bgImage?: string | null;
   overlayOpacity?: string | null;
+  featuredProduct?: FeaturedProduct | null;
 }
 
-export function HeroSection({ banner, settings, bgImage, overlayOpacity }: HeroSectionProps) {
+export function HeroSection({ banner, settings, bgImage, overlayOpacity, featuredProduct }: HeroSectionProps) {
   const s: HeroSettings = { ...DEFAULTS, ...settings };
   const hasBannerImage = !!(banner?.image && banner.image.length > 0);
 
@@ -88,6 +99,12 @@ export function HeroSection({ banner, settings, bgImage, overlayOpacity }: HeroS
     window.addEventListener("mousemove", handleMove, { passive: true });
     return () => window.removeEventListener("mousemove", handleMove);
   }, []);
+
+  // Derived product card data
+  const product = featuredProduct;
+  const discountPct = product?.comparePrice && product.comparePrice > product.basePrice
+    ? Math.round(((product.comparePrice - product.basePrice) / product.comparePrice) * 100)
+    : null;
 
   return (
     <>
@@ -292,9 +309,12 @@ export function HeroSection({ banner, settings, bgImage, overlayOpacity }: HeroS
                 </div>
               </div>
 
-              {/* ── Right: 3D Floating Product Card (fully clickable) ── */}
+              {/* ── Right: 3D Floating Product Card ── */}
               <div className="relative flex items-center justify-center lg:justify-end">
-                <Link href="/products/premium-wireless-headphones" className="product-card-link block">
+                <Link
+                  href={product ? `/products/${product.slug}` : "/shop"}
+                  className="product-card-link block"
+                >
                   <div ref={float} className="product-card-float relative" style={{ transformStyle: "preserve-3d" }}>
                     {/* Outer glow */}
                     <div className="absolute -inset-10 rounded-full pointer-events-none"
@@ -309,21 +329,50 @@ export function HeroSection({ banner, settings, bgImage, overlayOpacity }: HeroS
                         boxShadow: "0 40px 80px rgba(0,0,0,0.55), 0 0 60px rgba(59,130,246,0.12), inset 0 1px 0 rgba(255,255,255,0.12)",
                       }}
                     >
-                      {/* Image area */}
-                      <div className="relative h-56 flex items-center justify-center overflow-hidden"
+                      {/* ── Image area ── */}
+                      <div className="relative h-56 overflow-hidden"
                         style={{ background: "linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0c0a1e 100%)" }}>
-                        <div className="absolute w-48 h-48 rounded-full"
-                          style={{ background: "radial-gradient(circle, rgba(99,102,241,0.45) 0%, transparent 70%)", filter: "blur(30px)" }} />
-                        <div className="relative z-10 w-32 h-32 rounded-full flex items-center justify-center"
-                          style={{ background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)", boxShadow: "0 0 40px rgba(79,70,229,0.55), 0 0 80px rgba(124,58,237,0.2)" }}>
-                          <Headphones size={56} className="text-white" strokeWidth={1.2} />
-                        </div>
-                        {/* Badges */}
-                        <div className="absolute top-4 right-4 px-3 py-1.5 rounded-full text-xs font-black text-white"
-                          style={{ background: "rgba(220,38,38,0.92)", boxShadow: "0 0 14px rgba(220,38,38,0.5)" }}>
-                          −50% OFF
-                        </div>
-                        <div className="absolute top-4 left-4 flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold"
+
+                        {product?.imageUrl ? (
+                          /* Real product image */
+                          <Image
+                            src={product.imageUrl}
+                            alt={product.imageAlt}
+                            fill
+                            sizes="(max-width: 640px) 288px, (max-width: 1024px) 320px, 384px"
+                            className="object-cover object-center"
+                            priority
+                          />
+                        ) : (
+                          /* Fallback decorative icon */
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="absolute w-48 h-48 rounded-full"
+                              style={{ background: "radial-gradient(circle, rgba(99,102,241,0.45) 0%, transparent 70%)", filter: "blur(30px)" }} />
+                            <div className="relative z-10 w-32 h-32 rounded-full flex items-center justify-center"
+                              style={{ background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)", boxShadow: "0 0 40px rgba(79,70,229,0.55), 0 0 80px rgba(124,58,237,0.2)" }}>
+                              <Headphones size={56} className="text-white" strokeWidth={1.2} />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Dark overlay at bottom so text/badges stay readable */}
+                        <div className="absolute inset-0 pointer-events-none"
+                          style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, transparent 40%, rgba(0,0,0,0.55) 100%)" }} />
+
+                        {/* Discount badge */}
+                        {discountPct ? (
+                          <div className="absolute top-4 right-4 px-3 py-1.5 rounded-full text-xs font-black text-white z-10"
+                            style={{ background: "rgba(220,38,38,0.92)", boxShadow: "0 0 14px rgba(220,38,38,0.5)" }}>
+                            −{discountPct}% OFF
+                          </div>
+                        ) : (
+                          <div className="absolute top-4 right-4 px-3 py-1.5 rounded-full text-xs font-black text-white z-10"
+                            style={{ background: "rgba(220,38,38,0.92)", boxShadow: "0 0 14px rgba(220,38,38,0.5)" }}>
+                            Featured
+                          </div>
+                        )}
+
+                        <div className="absolute top-4 left-4 flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold z-10"
                           style={{ background: "rgba(234,179,8,0.15)", border: "1px solid rgba(234,179,8,0.4)", color: "#facc15" }}>
                           🔥 Hot Deal
                         </div>
@@ -331,8 +380,12 @@ export function HeroSection({ banner, settings, bgImage, overlayOpacity }: HeroS
 
                       {/* Product info */}
                       <div className="p-5">
-                        <p className="text-xs mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>Gadgets</p>
-                        <h3 className="text-base font-bold text-white mb-3">Premium Wireless Headphones</h3>
+                        <p className="text-xs mb-1" style={{ color: "rgba(255,255,255,0.4)" }}>
+                          {product?.category ?? "Gadgets"}
+                        </p>
+                        <h3 className="text-base font-bold text-white mb-3 line-clamp-1">
+                          {product?.name ?? "Premium Wireless Headphones"}
+                        </h3>
                         {/* Stars */}
                         <div className="flex items-center gap-1.5 mb-4">
                           {[1,2,3,4,5].map((n) => (
@@ -340,12 +393,18 @@ export function HeroSection({ banner, settings, bgImage, overlayOpacity }: HeroS
                               <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26" />
                             </svg>
                           ))}
-                          <span className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>(2.4k reviews)</span>
+                          <span className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>(Top Rated)</span>
                         </div>
-                        {/* Price — red new, gray strikethrough old */}
+                        {/* Price */}
                         <div className="flex items-baseline gap-3 mb-4">
-                          <span className="text-2xl font-black" style={{ color: "#ef4444", textShadow: "0 0 20px rgba(239,68,68,0.4)" }}>Rs. 2,499</span>
-                          <span className="text-sm line-through" style={{ color: "rgba(255,255,255,0.35)" }}>Rs. 4,999</span>
+                          <span className="text-2xl font-black" style={{ color: "#ef4444", textShadow: "0 0 20px rgba(239,68,68,0.4)" }}>
+                            {product ? formatCurrency(product.basePrice) : "Rs. 2,499"}
+                          </span>
+                          {product?.comparePrice && product.comparePrice > product.basePrice && (
+                            <span className="text-sm line-through" style={{ color: "rgba(255,255,255,0.35)" }}>
+                              {formatCurrency(product.comparePrice)}
+                            </span>
+                          )}
                         </div>
                         <div className="w-full py-3 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2"
                           style={{ background: "linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)", boxShadow: "0 8px 24px rgba(37,99,235,0.35)" }}>

@@ -4,11 +4,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { X, Tag } from "lucide-react";
 
-interface PromoBarSettings {
-  promo_bar_enabled: string;
-  promo_bar_text: string;
-  promo_bar_link: string;
-  promo_bar_color: string; // "primary" | "amber" | "red" | "green"
+interface PromoState {
+  text: string;
+  link: string;
+  color: string;
 }
 
 const COLOR_CLASSES: Record<string, string> = {
@@ -19,58 +18,67 @@ const COLOR_CLASSES: Record<string, string> = {
 };
 
 export function PromoBar() {
-  const [settings, setSettings] = useState<PromoBarSettings | null>(null);
+  const [promo, setPromo]       = useState<PromoState | null>(null);
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    // Check if user already dismissed this session
     if (sessionStorage.getItem("promo_bar_dismissed") === "1") {
       setDismissed(true);
       return;
     }
-    fetch("/api/settings")
-      .then((r) => r.json())
-      .then((data: { settings: Record<string, string | null> }) => {
-        const s = data.settings;
-        setSettings({
-          promo_bar_enabled: s["promo_bar_enabled"] ?? "false",
-          promo_bar_text:    s["promo_bar_text"] ?? "",
-          promo_bar_link:    s["promo_bar_link"] ?? "",
-          promo_bar_color:   s["promo_bar_color"] ?? "primary",
-        });
+
+    // Fetch PROMO_BAR banners AND site-settings in parallel
+    Promise.all([
+      fetch("/api/banners?position=PROMO_BAR").then((r) => r.ok ? r.json() : null),
+      fetch("/api/settings").then((r) => r.ok ? r.json() : null),
+    ])
+      .then(([bannerData, settingsData]) => {
+        // ── Banner table takes priority ──────────────────────────
+        const banner = bannerData?.banners?.[0] ?? null;
+        if (banner?.title) {
+          setPromo({
+            text:  banner.subtitle ? `${banner.title} — ${banner.subtitle}` : banner.title,
+            link:  banner.link ?? "",
+            color: "primary",
+          });
+          return;
+        }
+
+        // ── Fallback: SiteSettings (promo_bar_* keys) ────────────
+        const s = settingsData?.settings ?? {};
+        if (s["promo_bar_enabled"] === "true" && s["promo_bar_text"]?.trim()) {
+          setPromo({
+            text:  s["promo_bar_text"],
+            link:  s["promo_bar_link"] ?? "",
+            color: s["promo_bar_color"] ?? "primary",
+          });
+        }
       })
       .catch(() => {});
   }, []);
-
-  if (
-    dismissed ||
-    !settings ||
-    settings.promo_bar_enabled !== "true" ||
-    !settings.promo_bar_text.trim()
-  ) {
-    return null;
-  }
-
-  const colorCls = COLOR_CLASSES[settings.promo_bar_color] ?? COLOR_CLASSES.primary;
 
   function dismiss() {
     setDismissed(true);
     sessionStorage.setItem("promo_bar_dismissed", "1");
   }
 
+  if (dismissed || !promo) return null;
+
+  const colorCls = COLOR_CLASSES[promo.color] ?? COLOR_CLASSES.primary;
+
   const content = (
     <span className="flex items-center justify-center gap-2 text-sm font-semibold px-4 text-center">
       <Tag size={13} className="flex-shrink-0 opacity-80" />
-      {settings.promo_bar_text}
+      {promo.text}
     </span>
   );
 
   return (
     <div className={`relative w-full py-2 ${colorCls}`}>
       <div className="container-wide flex items-center justify-center">
-        {settings.promo_bar_link ? (
+        {promo.link ? (
           <Link
-            href={settings.promo_bar_link}
+            href={promo.link}
             className="flex-1 flex justify-center hover:opacity-90 transition-opacity"
           >
             {content}
