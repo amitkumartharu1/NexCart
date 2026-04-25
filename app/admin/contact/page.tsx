@@ -5,6 +5,7 @@ import {
   Mail, Phone, MapPin, Clock, Save, Inbox, Settings2,
   Trash2, Eye, EyeOff, Check, Search, X, RefreshCw,
   MessageSquare, ChevronDown, ChevronUp, Globe, Reply,
+  type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -349,7 +350,7 @@ function SettingsTab() {
     );
   }
 
-  const fields: { icon: React.ElementType; label: string; valueKey: keyof ContactSettings; subKey: keyof ContactSettings; placeholder: string; subPlaceholder: string }[] = [
+  const fields: { icon: LucideIcon; label: string; valueKey: keyof ContactSettings; subKey: keyof ContactSettings; placeholder: string; subPlaceholder: string }[] = [
     { icon: Mail,   label: "Email",   valueKey: "contact_email",   subKey: "contact_email_sub",   placeholder: "support@example.com",  subPlaceholder: "e.g. We reply within 24 hours" },
     { icon: Phone,  label: "Phone",   valueKey: "contact_phone",   subKey: "contact_phone_sub",   placeholder: "+977-9800000000",       subPlaceholder: "e.g. Mon-Sat, 9am-6pm NPT" },
     { icon: MapPin, label: "Address", valueKey: "contact_address", subKey: "contact_address_sub", placeholder: "Kathmandu, Nepal",      subPlaceholder: "e.g. Visit our showroom" },
@@ -460,7 +461,7 @@ function InboxTab() {
   const [deleteTarget,setDeleteTarget]= useState<ContactMessage | null>(null);
   const [deleting,    setDeleting]    = useState(false);
 
-  const timer = useRef<ReturnType<typeof setTimeout>>();
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => {
     clearTimeout(timer.current);
     timer.current = setTimeout(() => setDebSearch(search), 350);

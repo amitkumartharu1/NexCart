@@ -424,7 +424,7 @@ export default function AdminTestimonialsPage() {
   const [saving,   setSaving]  = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const searchTimer = useRef<ReturnType<typeof setTimeout>>();
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Debounce search
   useEffect(() => {
