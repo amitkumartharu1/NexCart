@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db/prisma";
+import { clearAIKeyCache } from "@/lib/ai/chat";
 
 const ADMIN_ROLES = ["SUPER_ADMIN", "ADMIN"];
 
@@ -52,6 +53,9 @@ export async function PATCH(req: NextRequest) {
       })
     )
   );
+
+  // Invalidate in-memory AI key cache so new keys take effect immediately
+  clearAIKeyCache();
 
   // Revalidate all public pages that consume settings
   revalidatePath("/", "layout");   // root layout — covers navbar, footer, PromoBar

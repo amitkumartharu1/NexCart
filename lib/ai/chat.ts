@@ -19,13 +19,24 @@ let _keyCache: Record<string, string> | null = null;
 let _keyCacheTime = 0;
 const KEY_CACHE_TTL = 60_000; // 1 minute
 
+const DB_SETTING_KEYS = [
+  "ai_openai_key",
+  "ai_openai_base_url",
+  "ai_openai_model",
+  "ai_cohere_key",
+  "ai_huggingface_key",
+  "twilio_account_sid",
+  "twilio_auth_token",
+  "twilio_phone_number",
+] as const;
+
 async function getDbKeys(): Promise<Record<string, string>> {
   const now = Date.now();
   if (_keyCache && now - _keyCacheTime < KEY_CACHE_TTL) return _keyCache;
 
   try {
     const rows = await prisma.siteSettings.findMany({
-      where: { key: { in: ["ai_openai_key", "ai_cohere_key", "ai_huggingface_key", "twilio_account_sid", "twilio_auth_token", "twilio_phone_number"] } },
+      where:  { key: { in: [...DB_SETTING_KEYS] } },
       select: { key: true, value: true },
     });
     _keyCache = Object.fromEntries(rows.map((r) => [r.key, r.value ?? ""]));
@@ -35,6 +46,12 @@ async function getDbKeys(): Promise<Record<string, string>> {
     _keyCacheTime = now;
   }
   return _keyCache;
+}
+
+/** Force the key cache to refresh on next call (call after admin saves settings). */
+export function clearAIKeyCache() {
+  _keyCache     = null;
+  _keyCacheTime = 0;
 }
 
 /** Returns env var value if set, otherwise falls back to DB setting. */
@@ -47,8 +64,9 @@ async function resolveKey(envVar: string, dbKey: string): Promise<string | undef
 // ─── OpenAI / OpenAI-compatible ───────────────────────────────────────────────
 
 async function callOpenAI(messages: AIMessage[], apiKey: string): Promise<string> {
-  const baseUrl = process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1";
-  const model   = process.env.OPENAI_MODEL    ?? "gpt-3.5-turbo";
+  const db      = await getDbKeys();
+  const baseUrl = process.env.OPENAI_BASE_URL ?? db["ai_openai_base_url"] || "https://api.openai.com/v1";
+  const model   = process.env.OPENAI_MODEL    ?? db["ai_openai_model"]    || "gpt-3.5-turbo";
 
   const res = await fetch(`${baseUrl}/chat/completions`, {
     method:  "POST",

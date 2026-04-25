@@ -59,11 +59,19 @@ export async function GET() {
       take: 5,
     }).catch(() => []),
     prisma.category.findMany({
-      where:   { isActive: true },
-      select:  { id: true, name: true, slug: true, _count: { select: { products: true } } },
-      orderBy: { products: { _count: "desc" } },
-      take:    6,
-    }).catch(() => []),
+      where:  { isActive: true },
+      select: {
+        id:   true,
+        name: true,
+        slug: true,
+        // Count only ACTIVE products — matches what shoppers actually see
+        _count: { select: { products: { where: { status: "ACTIVE" } } } },
+      },
+    }).then((rows) =>
+      rows
+        .sort((a, b) => b._count.products - a._count.products)
+        .slice(0, 6)
+    ).catch(() => []),
   ]);
 
   // Revenue trend - last 7 days

@@ -118,6 +118,8 @@ interface Settings {
   giveaway_end_date: string;
   // API Keys
   ai_openai_key: string;
+  ai_openai_base_url: string;
+  ai_openai_model: string;
   ai_cohere_key: string;
   ai_huggingface_key: string;
   twilio_account_sid: string;
@@ -183,6 +185,8 @@ const DEFAULTS: Settings = {
   giveaway_end_date: "",
   // API Keys
   ai_openai_key: "",
+  ai_openai_base_url: "",
+  ai_openai_model: "",
   ai_cohere_key: "",
   ai_huggingface_key: "",
   twilio_account_sid: "",
@@ -964,13 +968,40 @@ export default function AdminSettingsPage() {
 
             <ApiKeyField
               label="OpenAI API Key"
-              hint={<>Get yours at <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2">platform.openai.com/api-keys</a>. Uses gpt-3.5-turbo by default.</>}
+              hint={<>Get yours at <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2">platform.openai.com/api-keys</a>. Also works with any OpenAI-compatible API (Groq, Together AI, Ollama).</>}
               placeholder="sk-proj-••••••••••••••••••••••••"
               value={settings.ai_openai_key}
               visible={visibleKeys.has("ai_openai_key")}
               onChange={(v) => set("ai_openai_key", v)}
               onToggle={() => toggleKeyVisibility("ai_openai_key")}
             />
+
+            <div className="grid grid-cols-2 gap-4">
+              <Field
+                label="API Base URL"
+                hint='Change for Groq: "https://api.groq.com/openai/v1" or Ollama: "http://localhost:11434/v1"'
+              >
+                <input
+                  type="url"
+                  value={settings.ai_openai_base_url}
+                  onChange={(e) => set("ai_openai_base_url", e.target.value)}
+                  placeholder="https://api.openai.com/v1"
+                  className={inputCls}
+                />
+              </Field>
+              <Field
+                label="Model"
+                hint='e.g. gpt-4o-mini, llama-3.1-8b-instant (Groq), gemma2-9b-it'
+              >
+                <input
+                  type="text"
+                  value={settings.ai_openai_model}
+                  onChange={(e) => set("ai_openai_model", e.target.value)}
+                  placeholder="gpt-3.5-turbo"
+                  className={inputCls}
+                />
+              </Field>
+            </div>
 
             <ApiKeyField
               label="Cohere API Key"
