@@ -331,32 +331,49 @@ export function Testimonials() {
   const [loading, setLoading] = useState(true);
   const [paused, setPaused] = useState(false);
 
-  /* Fetch real reviews from DB */
+  /* Fetch testimonials — admin-managed ones first, then real customer reviews */
   useEffect(() => {
-    fetch("/api/reviews/homepage")
-      .then((r) => r.ok ? r.json() : null)
-      .then((data: { reviews: any[] } | null) => {
-        if (data?.reviews?.length) {
-          const mapped: ReviewCard[] = data.reviews.map((r: any, i: number) => ({
-            id:           r.id,
-            name:         r.user?.name ?? "Customer",
-            initials:     getInitials(r.user?.name ?? "C"),
-            avatarUrl:    r.user?.image ?? null,
-            rating:       r.rating,
-            product:      r.product?.name ?? "NexCart Product",
-            productImage: r.product?.images?.[0]?.url ?? null,
-            body:         r.body ?? r.title ?? "Great product!",
-            gradIdx:      i % AVATAR_GRADS.length,
-            floatDelay:   `${(i * 0.35) % 2}s`,
-          }));
-          setCards(mapped);
-        } else {
-          /* No approved reviews yet — show hardcoded fallback */
-          setCards(FALLBACK);
-        }
-      })
-      .catch(() => setCards(FALLBACK))
-      .finally(() => setLoading(false));
+    Promise.all([
+      fetch("/api/testimonials").then((r) => r.ok ? r.json() : null).catch(() => null),
+      fetch("/api/reviews/homepage").then((r) => r.ok ? r.json() : null).catch(() => null),
+    ]).then(([testiData, reviewData]) => {
+      const testimonials: any[] = testiData?.testimonials ?? [];
+      const reviews: any[]      = reviewData?.reviews ?? [];
+
+      // Admin-created testimonials take priority, supplement with real customer reviews
+      const combined = [
+        ...testimonials.map((t: any, i: number) => ({
+          id:           t.id,
+          name:         t.name,
+          initials:     getInitials(t.name),
+          avatarUrl:    t.avatar ?? null,
+          rating:       t.rating,
+          product:      t.company ?? "NexCart",
+          productImage: null,
+          body:         t.body,
+          gradIdx:      i % AVATAR_GRADS.length,
+          floatDelay:   `${(i * 0.35) % 2}s`,
+        })),
+        ...reviews.map((r: any, i: number) => ({
+          id:           r.id,
+          name:         r.user?.name ?? "Customer",
+          initials:     getInitials(r.user?.name ?? "C"),
+          avatarUrl:    r.user?.image ?? null,
+          rating:       r.rating,
+          product:      r.product?.name ?? "NexCart Product",
+          productImage: r.product?.images?.[0]?.url ?? null,
+          body:         r.body ?? r.title ?? "Great product!",
+          gradIdx:      (testimonials.length + i) % AVATAR_GRADS.length,
+          floatDelay:   `${((testimonials.length + i) * 0.35) % 2}s`,
+        })),
+      ];
+
+      if (combined.length > 0) {
+        setCards(combined as ReviewCard[]);
+      } else {
+        setCards(FALLBACK);
+      }
+    }).finally(() => setLoading(false));
   }, []);
 
   const scrollBy = useCallback((dir: number) => {
