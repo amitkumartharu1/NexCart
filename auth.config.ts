@@ -58,7 +58,9 @@ export const authConfig = {
         ) {
           // Already logged in → send to appropriate home
           const dest =
-            role && ADMIN_ROLES.has(role) ? "/admin/dashboard" : "/";
+            role && ADMIN_ROLES.has(role)
+              ? "/admin/dashboard"
+              : "/dashboard/profile";
           return Response.redirect(new URL(dest, nextUrl));
         }
         return true; // allow unauthenticated access to auth pages
