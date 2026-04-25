@@ -157,11 +157,41 @@ export function TrendingProducts() {
                         alt={image.altText ?? product.name}
                         fill
                         sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                        className="object-cover transition-transform duration-500 group-hover:scale-110"
+                        className="object-cover object-center transition-transform duration-500 group-hover:scale-110"
+                        onError={(e) => {
+                          // If image fails to load, hide it and show the fallback
+                          (e.currentTarget as HTMLImageElement).style.display = "none";
+                          const parent = (e.currentTarget as HTMLImageElement).parentElement;
+                          if (parent) {
+                            const fallback = parent.querySelector(".img-fallback") as HTMLElement | null;
+                            if (fallback) fallback.style.display = "flex";
+                          }
+                        }}
                       />
-                    ) : (
-                      <div className="absolute inset-0 flex items-center justify-center text-4xl text-foreground-subtle">🛍</div>
-                    )}
+                    ) : null}
+                    {/* Fallback shown when no image URL or image fails to load */}
+                    <div
+                      className="img-fallback absolute inset-0 flex flex-col items-center justify-center gap-2 select-none"
+                      style={{
+                        display: image ? "none" : "flex",
+                        background: "linear-gradient(135deg, rgba(37,99,235,0.12) 0%, rgba(124,58,237,0.12) 100%)",
+                      }}
+                    >
+                      <span
+                        className="text-5xl font-black"
+                        style={{
+                          background: "linear-gradient(135deg, #2563eb, #7c3aed)",
+                          WebkitBackgroundClip: "text",
+                          WebkitTextFillColor: "transparent",
+                          backgroundClip: "text",
+                        }}
+                      >
+                        {product.name.charAt(0).toUpperCase()}
+                      </span>
+                      <span className="text-[10px] font-semibold text-foreground-muted px-2 text-center line-clamp-2">
+                        {product.category?.name ?? "Product"}
+                      </span>
+                    </div>
                     {/* Discount badge — top left */}
                     {badge && (
                       <span className={`absolute top-2 left-2 text-xs font-black px-2 py-0.5 rounded-full border ${badge.style}`}>

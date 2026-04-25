@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useEffect, useCallback } from "react";
+import Image from "next/image";
 import { Star, Quote, BadgeCheck, ChevronLeft, ChevronRight } from "lucide-react";
 
 /* ─── Keyframes ────────────────────────────────────────────────── */
@@ -65,72 +66,68 @@ const AVATAR_GLOWS = [
   "239,68,68",
 ];
 
-/* ─── Data ─────────────────────────────────────────────────────── */
-const TESTIMONIALS = [
+/* ─── Types ─────────────────────────────────────────────────────── */
+interface ReviewCard {
+  id: string;
+  name: string;
+  initials: string;
+  avatarUrl: string | null;
+  rating: number;
+  product: string;
+  productImage: string | null;
+  body: string;
+  gradIdx: number;
+  floatDelay: string;
+}
+
+/* ─── Fallback data (shown when no DB reviews yet) ─────────────── */
+const FALLBACK: ReviewCard[] = [
   {
-    name: "Sarah M.",
-    location: "Mumbai, IN",
-    initials: "SM",
-    rating: 5,
-    product: "Wireless Pro Headphones",
+    id: "f1", name: "Sarah M.", initials: "SM", avatarUrl: null, rating: 5,
+    product: "Wireless Pro Headphones", productImage: null,
     body: "Absolutely love my new headphones. The quality is exceptional and delivery was faster than expected. NexCart is my go-to now.",
-    floatDelay: "0s",
-    gradIdx: 0,
+    gradIdx: 0, floatDelay: "0s",
   },
   {
-    name: "James K.",
-    location: "Bangalore, IN",
-    initials: "JK",
-    rating: 5,
-    product: "Device Repair Service",
+    id: "f2", name: "James K.", initials: "JK", avatarUrl: null, rating: 5,
+    product: "Device Repair Service", productImage: null,
     body: "The repair service was outstanding. My laptop was fixed in 2 hours and works like new. Truly professional and knowledgeable team.",
-    floatDelay: "0.9s",
-    gradIdx: 1,
+    gradIdx: 1, floatDelay: "0.9s",
   },
   {
-    name: "Priya R.",
-    location: "Delhi, IN",
-    initials: "PR",
-    rating: 5,
-    product: "Smart Watch Ultra",
+    id: "f3", name: "Priya R.", initials: "PR", avatarUrl: null, rating: 5,
+    product: "Smart Watch Ultra", productImage: null,
     body: "Great selection with competitive pricing. The comparison feature helped me make the right choice. Highly recommended to everyone!",
-    floatDelay: "0.4s",
-    gradIdx: 2,
+    gradIdx: 2, floatDelay: "0.4s",
   },
   {
-    name: "Tom W.",
-    location: "Hyderabad, IN",
-    initials: "TW",
-    rating: 5,
-    product: "Gaming Mouse Pro",
+    id: "f4", name: "Tom W.", initials: "TW", avatarUrl: null, rating: 5,
+    product: "Gaming Mouse Pro", productImage: null,
     body: "Ordered a gaming setup and everything arrived perfectly packaged. Customer support was incredibly helpful throughout.",
-    floatDelay: "1.3s",
-    gradIdx: 3,
+    gradIdx: 3, floatDelay: "1.3s",
   },
   {
-    name: "Nina S.",
-    location: "Chennai, IN",
-    initials: "NS",
-    rating: 5,
-    product: "Tech Consultation",
+    id: "f5", name: "Nina S.", initials: "NS", avatarUrl: null, rating: 5,
+    product: "Tech Consultation", productImage: null,
     body: "The consultation saved me hours of research. The specialist knew exactly what I needed and suggested the perfect solution.",
-    floatDelay: "0.6s",
-    gradIdx: 4,
+    gradIdx: 4, floatDelay: "0.6s",
   },
   {
-    name: "Alex B.",
-    location: "Pune, IN",
-    initials: "AB",
-    rating: 5,
-    product: "Smart Devices",
+    id: "f6", name: "Alex B.", initials: "AB", avatarUrl: null, rating: 5,
+    product: "Smart Devices", productImage: null,
     body: "Returns process was painless. Ordered the wrong size, contacted support, and had a replacement in 2 days. Impressive!",
-    floatDelay: "1.1s",
-    gradIdx: 5,
+    gradIdx: 5, floatDelay: "1.1s",
   },
 ];
 
-/* Doubled for seamless infinite scroll */
-const DOUBLED = [...TESTIMONIALS, ...TESTIMONIALS];
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join("");
+}
 
 /* ─── Single card ──────────────────────────────────────────────── */
 function TestiCard({
@@ -138,11 +135,11 @@ function TestiCard({
   idx,
   isStatic = false,
 }: {
-  t: (typeof TESTIMONIALS)[number];
+  t: ReviewCard;
   idx: number;
   isStatic?: boolean;
 }) {
-  const grad = AVATAR_GRADS[t.gradIdx];
+  const grad    = AVATAR_GRADS[t.gradIdx];
   const glowRgb = AVATAR_GLOWS[t.gradIdx];
 
   return (
@@ -178,6 +175,38 @@ function TestiCard({
         }}
       />
 
+      {/* Product image strip (when available) */}
+      {t.productImage && (
+        <div className="relative w-full h-28 overflow-hidden">
+          <Image
+            src={t.productImage}
+            alt={t.product}
+            fill
+            sizes="320px"
+            className="object-cover"
+          />
+          {/* Gradient overlay so text below is readable */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background: "linear-gradient(to bottom, transparent 40%, rgba(8,8,13,0.9) 100%)",
+            }}
+          />
+          {/* Product name pill over image */}
+          <div
+            className="absolute bottom-2 left-3 px-2 py-0.5 rounded-full text-[10px] font-semibold"
+            style={{
+              background: `rgba(${glowRgb},0.18)`,
+              border: `1px solid rgba(${glowRgb},0.3)`,
+              color: `rgba(${glowRgb},1)`,
+              backdropFilter: "blur(8px)",
+            }}
+          >
+            Re: {t.product}
+          </div>
+        </div>
+      )}
+
       <div className="relative z-10 p-6 flex flex-col gap-4">
         {/* Quote icon */}
         <div
@@ -189,7 +218,7 @@ function TestiCard({
 
         {/* Stars */}
         <div className="flex gap-1">
-          {Array.from({ length: t.rating }).map((_, i) => (
+          {Array.from({ length: Math.min(5, Math.max(1, t.rating)) }).map((_, i) => (
             <Star
               key={i}
               size={13}
@@ -201,23 +230,25 @@ function TestiCard({
 
         {/* Review body */}
         <p
-          className="text-sm leading-relaxed"
+          className="text-sm leading-relaxed line-clamp-4"
           style={{ color: "rgba(255,255,255,0.65)" }}
         >
           &ldquo;{t.body}&rdquo;
         </p>
 
-        {/* Product tag */}
-        <div
-          className="inline-flex items-center self-start px-2.5 py-1 rounded-full text-xs font-medium"
-          style={{
-            background: `rgba(${glowRgb},0.12)`,
-            border: `1px solid rgba(${glowRgb},0.25)`,
-            color: `rgba(${glowRgb},1)`,
-          }}
-        >
-          Re: {t.product}
-        </div>
+        {/* Product tag (shown only when no product image) */}
+        {!t.productImage && (
+          <div
+            className="inline-flex items-center self-start px-2.5 py-1 rounded-full text-xs font-medium"
+            style={{
+              background: `rgba(${glowRgb},0.12)`,
+              border: `1px solid rgba(${glowRgb},0.25)`,
+              color: `rgba(${glowRgb},1)`,
+            }}
+          >
+            Re: {t.product}
+          </div>
+        )}
 
         {/* Divider */}
         <div
@@ -229,17 +260,30 @@ function TestiCard({
 
         {/* Author row */}
         <div className="flex items-center gap-3">
-          {/* 3D avatar */}
+          {/* Avatar — user photo or gradient initials */}
           <div className="relative flex-shrink-0">
-            <div
-              className="w-11 h-11 rounded-2xl flex items-center justify-center text-sm font-black text-white select-none"
-              style={{
-                background: grad,
-                boxShadow: `0 8px 24px rgba(${glowRgb},0.45), inset 0 1px 0 rgba(255,255,255,0.2)`,
-              }}
-            >
-              {t.initials}
-            </div>
+            {t.avatarUrl ? (
+              <Image
+                src={t.avatarUrl}
+                alt={t.name}
+                width={44}
+                height={44}
+                className="w-11 h-11 rounded-2xl object-cover"
+                style={{
+                  boxShadow: `0 8px 24px rgba(${glowRgb},0.35)`,
+                }}
+              />
+            ) : (
+              <div
+                className="w-11 h-11 rounded-2xl flex items-center justify-center text-sm font-black text-white select-none"
+                style={{
+                  background: grad,
+                  boxShadow: `0 8px 24px rgba(${glowRgb},0.45), inset 0 1px 0 rgba(255,255,255,0.2)`,
+                }}
+              >
+                {t.initials}
+              </div>
+            )}
             {/* Verified badge */}
             <div
               className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center"
@@ -252,11 +296,11 @@ function TestiCard({
             </div>
           </div>
 
-          {/* Name + location */}
+          {/* Name */}
           <div>
             <p className="text-sm font-bold text-white leading-tight">{t.name}</p>
             <p className="text-xs mt-0.5" style={{ color: "rgba(255,255,255,0.38)" }}>
-              {t.location}
+              Verified Buyer
             </p>
           </div>
         </div>
@@ -265,19 +309,71 @@ function TestiCard({
   );
 }
 
+/* ─── Skeleton card ─────────────────────────────────────────────── */
+function TestiSkeleton() {
+  return (
+    <div
+      className="flex-shrink-0 rounded-3xl overflow-hidden animate-pulse"
+      style={{
+        width: 320,
+        height: 260,
+        background: "rgba(255,255,255,0.04)",
+        border: "1px solid rgba(255,255,255,0.06)",
+      }}
+    />
+  );
+}
+
 /* ─── Export ───────────────────────────────────────────────────── */
 export function Testimonials() {
-  const trackRef = useRef<HTMLDivElement>(null);
+  const trackRef  = useRef<HTMLDivElement>(null);
+  const [cards, setCards]   = useState<ReviewCard[]>([]);
+  const [loading, setLoading] = useState(true);
   const [paused, setPaused] = useState(false);
-  const [canLeft, setCanLeft] = useState(false);
-  const [canRight, setCanRight] = useState(true);
 
-  /* Manual arrow scroll (static grid on small screens) */
-  const scrollBy = useCallback((dir: number) => {
-    const el = trackRef.current;
-    if (!el) return;
-    el.scrollBy({ left: dir * 340, behavior: "smooth" });
+  /* Fetch real reviews from DB */
+  useEffect(() => {
+    fetch("/api/reviews/homepage")
+      .then((r) => r.ok ? r.json() : null)
+      .then((data: { reviews: any[] } | null) => {
+        if (data?.reviews?.length) {
+          const mapped: ReviewCard[] = data.reviews.map((r: any, i: number) => ({
+            id:           r.id,
+            name:         r.user?.name ?? "Customer",
+            initials:     getInitials(r.user?.name ?? "C"),
+            avatarUrl:    r.user?.image ?? null,
+            rating:       r.rating,
+            product:      r.product?.name ?? "NexCart Product",
+            productImage: r.product?.images?.[0]?.url ?? null,
+            body:         r.body ?? r.title ?? "Great product!",
+            gradIdx:      i % AVATAR_GRADS.length,
+            floatDelay:   `${(i * 0.35) % 2}s`,
+          }));
+          setCards(mapped);
+        } else {
+          /* No approved reviews yet — show hardcoded fallback */
+          setCards(FALLBACK);
+        }
+      })
+      .catch(() => setCards(FALLBACK))
+      .finally(() => setLoading(false));
   }, []);
+
+  const scrollBy = useCallback((dir: number) => {
+    trackRef.current?.scrollBy({ left: dir * 340, behavior: "smooth" });
+  }, []);
+
+  /* Doubled for seamless infinite marquee */
+  const doubled = [...cards, ...cards];
+
+  /* Count + average for header */
+  const isRealData = cards !== FALLBACK && cards.length > 0 && !loading;
+  const avgRating  = isRealData
+    ? (cards.reduce((s, c) => s + c.rating, 0) / cards.length).toFixed(1)
+    : "4.9";
+  const reviewLabel = isRealData
+    ? `from ${cards.length}+ verified reviews`
+    : "from 12,000+ verified reviews";
 
   return (
     <>
@@ -332,14 +428,11 @@ export function Testimonials() {
               </span>
             </div>
 
-            <h2
-              className="text-4xl md:text-5xl font-black text-white leading-[1.1] tracking-tight"
-            >
+            <h2 className="text-4xl md:text-5xl font-black text-white leading-[1.1] tracking-tight">
               What Our{" "}
               <span
                 style={{
-                  background:
-                    "linear-gradient(135deg, #a855f7 0%, #3b82f6 50%, #06b6d4 100%)",
+                  background: "linear-gradient(135deg, #a855f7 0%, #3b82f6 50%, #06b6d4 100%)",
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
                   backgroundClip: "text",
@@ -352,13 +445,13 @@ export function Testimonials() {
             {/* Aggregate rating */}
             <div className="flex items-center justify-center gap-2 mt-5">
               <div className="flex gap-1">
-                {[1,2,3,4,5].map((s) => (
+                {[1, 2, 3, 4, 5].map((s) => (
                   <Star key={s} size={16} className="fill-yellow-400 text-yellow-400" />
                 ))}
               </div>
-              <span className="text-sm font-bold text-white">4.9</span>
+              <span className="text-sm font-bold text-white">{avgRating}</span>
               <span className="text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>
-                from 12,000+ verified reviews
+                {reviewLabel}
               </span>
             </div>
           </div>
@@ -368,18 +461,12 @@ export function Testimonials() {
             {/* Left edge fade */}
             <div
               className="absolute left-0 top-0 bottom-0 w-32 z-10 pointer-events-none"
-              style={{
-                background:
-                  "linear-gradient(to right, #08080d 0%, transparent 100%)",
-              }}
+              style={{ background: "linear-gradient(to right, #08080d 0%, transparent 100%)" }}
             />
             {/* Right edge fade */}
             <div
               className="absolute right-0 top-0 bottom-0 w-32 z-10 pointer-events-none"
-              style={{
-                background:
-                  "linear-gradient(to left, #08080d 0%, transparent 100%)",
-              }}
+              style={{ background: "linear-gradient(to left, #08080d 0%, transparent 100%)" }}
             />
 
             <div className="testi-track-wrap overflow-hidden">
@@ -387,15 +474,17 @@ export function Testimonials() {
                 className="testi-track flex gap-5 py-6"
                 style={{
                   width: "max-content",
-                  animation: "scrollTrack 40s linear infinite",
+                  animation: loading ? "none" : "scrollTrack 40s linear infinite",
                   animationPlayState: paused ? "paused" : "running",
                 }}
                 onMouseEnter={() => setPaused(true)}
                 onMouseLeave={() => setPaused(false)}
               >
-                {DOUBLED.map((t, i) => (
-                  <TestiCard key={`${t.name}-${i}`} t={t} idx={i} />
-                ))}
+                {loading
+                  ? Array.from({ length: 6 }).map((_, i) => <TestiSkeleton key={i} />)
+                  : doubled.map((t, i) => (
+                      <TestiCard key={`${t.id}-${i}`} t={t} idx={i} />
+                    ))}
               </div>
             </div>
           </div>
@@ -404,14 +493,16 @@ export function Testimonials() {
           <div className="relative md:hidden px-4">
             <div
               ref={trackRef}
-              className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide"
+              className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory"
               style={{ scrollbarWidth: "none" }}
             >
-              {TESTIMONIALS.map((t, i) => (
-                <div key={t.name} className="snap-start">
-                  <TestiCard t={t} idx={i} isStatic />
-                </div>
-              ))}
+              {loading
+                ? Array.from({ length: 3 }).map((_, i) => <TestiSkeleton key={i} />)
+                : cards.map((t, i) => (
+                    <div key={t.id} className="snap-start">
+                      <TestiCard t={t} idx={i} isStatic />
+                    </div>
+                  ))}
             </div>
 
             {/* Arrow buttons */}
@@ -443,7 +534,10 @@ export function Testimonials() {
 
           {/* ── Bottom trust line ── */}
           <div className="text-center mt-10 px-4">
-            <div className="inline-flex items-center gap-2 text-xs" style={{ color: "rgba(255,255,255,0.3)" }}>
+            <div
+              className="inline-flex items-center gap-2 text-xs"
+              style={{ color: "rgba(255,255,255,0.3)" }}
+            >
               <BadgeCheck size={13} className="text-emerald-500" />
               All reviews are from verified NexCart purchases
             </div>
