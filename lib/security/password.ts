@@ -6,8 +6,10 @@
  * Server-only — never import in client components.
  */
 
+// Default to bcryptjs — argon2 requires a native binary not included in package.json.
+// Set PASSWORD_HASH_ALGORITHM=argon2 only if you add argon2 to dependencies.
 const ALGORITHM =
-  (process.env.PASSWORD_HASH_ALGORITHM ?? "argon2") as "argon2" | "bcrypt";
+  (process.env.PASSWORD_HASH_ALGORITHM ?? "bcrypt") as "argon2" | "bcrypt";
 
 // Minimum password requirements
 export const PASSWORD_MIN_LENGTH = 8;
@@ -62,16 +64,29 @@ export async function verifyPassword(
   password: string,
   hash: string
 ): Promise<boolean> {
-  try {
-    // Argon2 hashes start with $argon2
-    if (hash.startsWith("$argon2")) {
+  // Argon2 hashes start with $argon2
+  if (hash.startsWith("$argon2")) {
+    try {
       const argon2 = await import("argon2");
-      return argon2.verify(hash, password);
+      return await argon2.verify(hash, password);
+    } catch (err) {
+      // argon2 native module not available (Vercel / Windows).
+      // This user's password cannot be verified — they must reset it.
+      console.error(
+        "[Password] Cannot verify argon2 hash — argon2 native module unavailable. " +
+        "User must reset their password. Error:",
+        err instanceof Error ? err.message : err
+      );
+      return false;
     }
-    // bcrypt hashes start with $2b or $2a
+  }
+
+  // bcrypt hashes start with $2b or $2a
+  try {
     const bcrypt = await import("bcryptjs");
-    return bcrypt.compare(password, hash);
-  } catch {
+    return await bcrypt.compare(password, hash);
+  } catch (err) {
+    console.error("[Password] bcryptjs verify error:", err);
     return false;
   }
 }

@@ -32,9 +32,11 @@ export function LoginForm({ callbackUrl, googleEnabled = false }: LoginFormProps
       });
 
       if (result?.error) {
-        if (result.error === "AccountSuspended") {
+        // Auth.js v5 puts the custom CredentialsSignin subclass code in result.code
+        const code = (result as any).code ?? result.error;
+        if (code === "AccountSuspended") {
           setError("Your account has been suspended. Please contact support.");
-        } else if (result.error === "AccountInactive") {
+        } else if (code === "AccountInactive") {
           setError("Please verify your email address before signing in.");
         } else {
           setError("Invalid email or password. Please try again.");
