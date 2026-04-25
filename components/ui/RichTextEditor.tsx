@@ -2,20 +2,25 @@
 
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import Image from "@tiptap/extension-image";
+import ImageExt from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
 import TextAlign from "@tiptap/extension-text-align";
 import Underline from "@tiptap/extension-underline";
 import { TextStyle } from "@tiptap/extension-text-style";
 import Color from "@tiptap/extension-color";
-import { useRef, useCallback, useEffect } from "react";
+import { Table } from "@tiptap/extension-table";
+import { TableRow } from "@tiptap/extension-table-row";
+import { TableHeader } from "@tiptap/extension-table-header";
+import { TableCell } from "@tiptap/extension-table-cell";
+import { useRef, useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
   Bold, Italic, UnderlineIcon, Strikethrough, List, ListOrdered,
   AlignLeft, AlignCenter, AlignRight, Link2, ImageIcon,
   Heading1, Heading2, Heading3, Undo, Redo, Code,
+  Table as TableIcon, Columns2, Rows3, Trash2, ChevronDown,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -23,17 +28,10 @@ import {
 // ---------------------------------------------------------------------------
 
 function ToolBtn({
-  onClick,
-  active,
-  disabled,
-  title,
-  children,
+  onClick, active, disabled, title, children,
 }: {
-  onClick: () => void;
-  active?: boolean;
-  disabled?: boolean;
-  title: string;
-  children: React.ReactNode;
+  onClick: () => void; active?: boolean; disabled?: boolean;
+  title: string; children: React.ReactNode;
 }) {
   return (
     <button
@@ -59,6 +57,107 @@ function Divider() {
 }
 
 // ---------------------------------------------------------------------------
+// Table dropdown menu
+// ---------------------------------------------------------------------------
+
+function TableMenu({ editor }: { editor: any }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Close when clicking outside
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const inTable = editor.isActive("table");
+
+  const items = inTable
+    ? [
+        { label: "Add column before", action: () => editor.chain().focus().addColumnBefore().run() },
+        { label: "Add column after",  action: () => editor.chain().focus().addColumnAfter().run() },
+        { label: "Delete column",     action: () => editor.chain().focus().deleteColumn().run() },
+        null, // divider
+        { label: "Add row before",    action: () => editor.chain().focus().addRowBefore().run() },
+        { label: "Add row after",     action: () => editor.chain().focus().addRowAfter().run() },
+        { label: "Delete row",        action: () => editor.chain().focus().deleteRow().run() },
+        null,
+        { label: "Merge cells",       action: () => editor.chain().focus().mergeCells().run() },
+        { label: "Split cell",        action: () => editor.chain().focus().splitCell().run() },
+        { label: "Toggle header row", action: () => editor.chain().focus().toggleHeaderRow().run() },
+        null,
+        { label: "🗑 Delete table",   action: () => editor.chain().focus().deleteTable().run(), danger: true },
+      ]
+    : [
+        { label: "Insert 2×2 table",  action: () => editor.chain().focus().insertTable({ rows: 2, cols: 2, withHeaderRow: true }).run() },
+        { label: "Insert 3×3 table",  action: () => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
+        { label: "Insert 4×4 table",  action: () => editor.chain().focus().insertTable({ rows: 4, cols: 4, withHeaderRow: true }).run() },
+        { label: "Insert 3×5 table",  action: () => editor.chain().focus().insertTable({ rows: 3, cols: 5, withHeaderRow: true }).run() },
+      ];
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onMouseDown={(e) => { e.preventDefault(); setOpen((v) => !v); }}
+        title="Table"
+        className={cn(
+          "h-7 px-1.5 flex items-center gap-0.5 rounded-md text-sm transition-colors",
+          inTable
+            ? "bg-primary text-primary-foreground"
+            : "text-foreground-muted hover:text-foreground hover:bg-background-subtle"
+        )}
+      >
+        <TableIcon size={13} />
+        <ChevronDown size={10} />
+      </button>
+
+      {open && (
+        <div
+          className="absolute left-0 top-full mt-1 z-50 min-w-[180px] rounded-xl border border-border bg-card shadow-lg py-1 overflow-hidden"
+          style={{ boxShadow: "0 8px 32px rgba(0,0,0,0.15)" }}
+        >
+          {!inTable && (
+            <p className="px-3 py-1 text-[10px] font-semibold text-foreground-subtle uppercase tracking-wider">
+              Insert Table
+            </p>
+          )}
+          {inTable && (
+            <p className="px-3 py-1 text-[10px] font-semibold text-foreground-subtle uppercase tracking-wider">
+              Edit Table
+            </p>
+          )}
+          {items.map((item, i) =>
+            item === null ? (
+              <div key={i} className="my-1 h-px bg-border mx-2" />
+            ) : (
+              <button
+                key={item.label}
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  item.action();
+                  setOpen(false);
+                }}
+                className={cn(
+                  "w-full text-left px-3 py-1.5 text-sm transition-colors hover:bg-background-subtle",
+                  (item as any).danger ? "text-destructive" : "text-foreground"
+                )}
+              >
+                {item.label}
+              </button>
+            )
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Image upload helper
 // ---------------------------------------------------------------------------
 
@@ -69,11 +168,9 @@ async function uploadImageFile(file: File): Promise<string> {
   if (file.size > 4 * 1024 * 1024) {
     throw new Error("Image too large. Maximum 4 MB.");
   }
-
   const fd = new FormData();
   fd.append("file", file);
   fd.append("folder", "nexcart/descriptions");
-
   const res = await fetch("/api/admin/upload", { method: "POST", body: fd });
   if (!res.ok) {
     const d = await res.json().catch(() => ({}));
@@ -103,7 +200,7 @@ export function RichTextEditor({
   className,
 }: RichTextEditorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const uploadingRef  = useRef(false);
+  const uploadingRef = useRef(false);
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -112,13 +209,17 @@ export function RichTextEditor({
       Underline,
       TextStyle,
       Color,
-      Image.configure({ inline: false, allowBase64: false }),
+      ImageExt.configure({ inline: false, allowBase64: false }),
       Link.configure({
         openOnClick: false,
         HTMLAttributes: { class: "text-primary underline underline-offset-2" },
       }),
       Placeholder.configure({ placeholder }),
       TextAlign.configure({ types: ["heading", "paragraph"] }),
+      Table.configure({ resizable: false }),
+      TableRow,
+      TableHeader,
+      TableCell,
     ],
     content: value,
     editorProps: {
@@ -126,7 +227,6 @@ export function RichTextEditor({
         class: "focus:outline-none prose prose-sm max-w-none text-foreground",
       },
       handlePaste(view, event) {
-        // Handle pasted images from clipboard
         const items = event.clipboardData?.items;
         if (!items) return false;
         for (const item of Array.from(items)) {
@@ -141,7 +241,6 @@ export function RichTextEditor({
         return false;
       },
       handleDrop(view, event) {
-        // Handle drag-and-drop images
         const files = event.dataTransfer?.files;
         if (!files?.length) return false;
         for (const file of Array.from(files)) {
@@ -159,13 +258,10 @@ export function RichTextEditor({
     },
   });
 
-  // Keep editor in sync if `value` changes externally
   useEffect(() => {
     if (!editor) return;
     const current = editor.getHTML();
-    if (current !== value) {
-      editor.commands.setContent(value);
-    }
+    if (current !== value) editor.commands.setContent(value);
   }, [value, editor]);
 
   const handleImageFile = useCallback(async (file: File) => {
@@ -177,16 +273,13 @@ export function RichTextEditor({
       editor.chain().focus().setImage({ src: url, alt: file.name }).run();
       toast.success("Image inserted", { id: toastId });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Upload failed";
-      toast.error(msg, { id: toastId });
+      toast.error(err instanceof Error ? err.message : "Upload failed", { id: toastId });
     } finally {
       uploadingRef.current = false;
     }
   }, [editor]);
 
-  const handleImageButton = useCallback(() => {
-    fileInputRef.current?.click();
-  }, []);
+  const handleImageButton = useCallback(() => { fileInputRef.current?.click(); }, []);
 
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -199,10 +292,7 @@ export function RichTextEditor({
     const prev = editor.getAttributes("link").href as string | undefined;
     const url = window.prompt("Enter URL:", prev ?? "https://");
     if (url === null) return;
-    if (url === "") {
-      editor.chain().focus().unsetLink().run();
-      return;
-    }
+    if (url === "") { editor.chain().focus().unsetLink().run(); return; }
     editor.chain().focus().setLink({ href: url }).run();
   }, [editor]);
 
@@ -210,7 +300,6 @@ export function RichTextEditor({
 
   return (
     <div className={cn("rounded-xl border border-border overflow-hidden bg-background", className)}>
-      {/* Hidden file input for image upload */}
       <input
         ref={fileInputRef}
         type="file"
@@ -291,10 +380,15 @@ export function RichTextEditor({
           <Link2 size={13} />
         </ToolBtn>
 
-        {/* Image upload */}
-        <ToolBtn title="Insert image (click to upload, or paste/drag)" onClick={handleImageButton}>
+        {/* Image */}
+        <ToolBtn title="Insert image" onClick={handleImageButton}>
           <ImageIcon size={13} />
         </ToolBtn>
+
+        <Divider />
+
+        {/* Table dropdown */}
+        <TableMenu editor={editor} />
       </div>
 
       {/* Editor area */}
@@ -307,7 +401,7 @@ export function RichTextEditor({
       {/* Footer hint */}
       <div className="px-3 py-1.5 border-t border-border bg-background-subtle/40 flex items-center gap-3">
         <span className="text-[11px] text-foreground-subtle">
-          Click <ImageIcon size={10} className="inline mx-0.5" /> to upload · Paste or drag images directly · Ctrl+Z to undo
+          Click <TableIcon size={10} className="inline mx-0.5" /> to insert a table · Click <ImageIcon size={10} className="inline mx-0.5" /> or paste/drag images · Ctrl+Z to undo
         </span>
       </div>
     </div>
