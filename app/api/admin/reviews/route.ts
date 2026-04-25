@@ -38,5 +38,6 @@ export async function PATCH(req: NextRequest) {
       ...(isHidden !== undefined && { isHidden }),
     },
   });
+
   return NextResponse.json({ review });
 }

@@ -28,9 +28,14 @@ interface Order {
   status: OrderStatus;
   total: number;
   createdAt: string;
-  user: { name: string | null; email: string | null } | null;
-  items: { quantity: number; price: number }[];
-  payment: { status: string; method: string } | null;
+  user: { name: string | null; email: string | null; phone?: string | null } | null;
+  items: { quantity: number; unitPrice: number }[];
+  payments: { status: string; method: string }[];
+  address: {
+    firstName: string; lastName: string;
+    city: string; state?: string | null; country: string;
+    phone?: string | null;
+  } | null;
 }
 
 interface Pagination {
@@ -176,6 +181,9 @@ export function AdminOrdersTable() {
                   Status
                 </th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wide">
+                  Phone / City
+                </th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wide">
                   Payment
                 </th>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wide">
@@ -189,7 +197,7 @@ export function AdminOrdersTable() {
                   .fill(null)
                   .map((_, i) => (
                     <tr key={i} className="border-b border-border last:border-0">
-                      {Array(7)
+                      {Array(8)
                         .fill(null)
                         .map((__, j) => (
                           <td key={j} className="px-4 py-3">
@@ -200,7 +208,7 @@ export function AdminOrdersTable() {
                   ))
               ) : orders.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center">
+                  <td colSpan={8} className="px-4 py-12 text-center">
                     <div className="flex flex-col items-center gap-3 text-foreground-muted">
                       <ShoppingBag size={32} className="opacity-30" />
                       <p>No orders found</p>
@@ -271,16 +279,28 @@ export function AdminOrdersTable() {
                             order.status.slice(1).toLowerCase()}
                         </span>
                       </td>
+                      {/* Phone / City */}
+                      <td className="px-4 py-3 text-xs">
+                        <p className="text-foreground-muted">
+                          {order.address?.phone ?? order.user?.phone ?? "—"}
+                        </p>
+                        {order.address?.city && (
+                          <p className="text-foreground-muted">{order.address.city}</p>
+                        )}
+                      </td>
+
+                      {/* Payment method */}
                       <td className="px-4 py-3 text-foreground-muted text-xs">
-                        {order.payment?.method
+                        {order.payments?.[0]?.method
                           ? ({
                               ESEWA:            "eSewa",
                               KHALTI:           "Khalti",
                               STRIPE:           "Card",
                               CASH_ON_DELIVERY: "Cash on Delivery",
-                              OTHER:            "eSewa (QR)",
-                            }[order.payment.method] ??
-                            order.payment.method.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()))
+                              BANK_TRANSFER:    "Bank Transfer",
+                              OTHER:            "QR Pay",
+                            }[order.payments[0].method] ??
+                            order.payments[0].method.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()))
                           : "—"}
                       </td>
                       <td className="px-4 py-3 text-foreground-muted text-xs whitespace-nowrap">

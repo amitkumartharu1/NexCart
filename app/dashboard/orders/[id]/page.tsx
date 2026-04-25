@@ -253,7 +253,33 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
   // Proof submission state
   const [txnId, setTxnId] = useState("");
   const [proofUrl, setProofUrl] = useState("");
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  const [proofPreview, setProofPreview] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  /** Upload selected file → get back a URL */
+  async function uploadProofFile(file: File): Promise<string> {
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch("/api/upload/payment", { method: "POST", body: fd });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error ?? "Upload failed");
+    return data.url as string;
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null;
+    setProofFile(file);
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (ev) => setProofPreview(ev.target?.result as string);
+      reader.readAsDataURL(file);
+      setProofUrl(""); // clear manual URL when file is chosen
+    } else {
+      setProofPreview(null);
+    }
+  }
 
   useEffect(() => {
     fetch(`/api/dashboard/orders/${id}`)
@@ -292,13 +318,24 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
     }
     setSubmitting(true);
     try {
+      // If a file was selected, upload it first to get a URL
+      let finalProofUrl = proofUrl.trim() || undefined;
+      if (proofFile) {
+        setUploading(true);
+        try {
+          finalProofUrl = await uploadProofFile(proofFile);
+        } finally {
+          setUploading(false);
+        }
+      }
+
       const res = await fetch("/api/payment/manual", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           orderId: id,
           transactionId: txnId.trim(),
-          proofImage: proofUrl.trim() || undefined,
+          proofImage: finalProofUrl,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -306,6 +343,8 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
       toast.success("Payment proof submitted! We'll verify and process your order shortly.");
       setTxnId("");
       setProofUrl("");
+      setProofFile(null);
+      setProofPreview(null);
       // Refresh order
       const refreshed = await fetch(`/api/dashboard/orders/${id}`).then((r) => r.json()).catch(() => null);
       if (refreshed?.order) setOrder(refreshed.order);
@@ -411,15 +450,46 @@ export default function OrderDetailPage({ params }: { params: Promise<{ id: stri
 
             <div>
               <label className="block text-xs font-medium text-foreground-muted mb-1.5">
-                Screenshot URL{" "}
-                <span className="font-normal opacity-70">(optional — upload to Imgur or similar)</span>
+                Payment Screenshot{" "}
+                <span className="font-normal opacity-70">(optional but speeds up verification)</span>
               </label>
-              <input
-                value={proofUrl}
-                onChange={(e) => setProofUrl(e.target.value)}
-                placeholder="https://i.imgur.com/..."
-                className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400/40"
-              />
+
+              {/* File upload */}
+              <label className="flex items-center gap-3 w-full px-3 py-2.5 border border-dashed border-border rounded-lg cursor-pointer hover:border-primary transition-colors bg-background">
+                <span className="text-lg">📷</span>
+                <span className="text-sm text-foreground-muted flex-1">
+                  {proofFile ? proofFile.name : "Click to upload screenshot (JPEG / PNG, max 5 MB)"}
+                </span>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/webp"
+                  className="sr-only"
+                  onChange={handleFileChange}
+                />
+              </label>
+
+              {/* Preview */}
+              {proofPreview && (
+                <div className="mt-2 relative inline-block">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={proofPreview}
+                    alt="Screenshot preview"
+                    className="max-h-40 rounded-lg border border-border object-contain"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => { setProofFile(null); setProofPreview(null); }}
+                    className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+
+              {uploading && (
+                <p className="text-xs text-primary mt-1 animate-pulse">Uploading screenshot…</p>
+              )}
             </div>
 
             <button

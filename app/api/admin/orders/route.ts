@@ -31,9 +31,15 @@ export async function GET(req: NextRequest) {
       take: limit,
       orderBy: { createdAt: "desc" },
       include: {
-        user: { select: { name: true, email: true } },
+        user: { select: { name: true, email: true, phone: true } },
         items: { select: { quantity: true, unitPrice: true } },
         payments: { select: { status: true, method: true }, take: 1 },
+        address: {
+          select: {
+            firstName: true, lastName: true,
+            city: true, state: true, country: true, phone: true,
+          },
+        },
       },
     }),
     prisma.order.count({ where }),

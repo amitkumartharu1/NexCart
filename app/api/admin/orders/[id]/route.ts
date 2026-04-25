@@ -48,7 +48,33 @@ export async function GET(
   });
 
   if (!order) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json({ order });
+
+  // Transform Prisma Address model → shippingAddress shape expected by the frontend
+  const addr = (order as any).address as {
+    firstName: string; lastName: string;
+    addressLine1: string; addressLine2?: string | null;
+    city: string; state?: string | null; postalCode: string;
+    country: string; phone?: string | null;
+  } | null;
+
+  const transformed = {
+    ...order,
+    address: undefined,
+    shippingAddress: addr
+      ? {
+          name:       `${addr.firstName} ${addr.lastName}`.trim(),
+          line1:      addr.addressLine1,
+          line2:      addr.addressLine2 ?? null,
+          city:       addr.city,
+          state:      addr.state ?? "",
+          postalCode: addr.postalCode,
+          country:    addr.country,
+          phone:      addr.phone ?? null,
+        }
+      : null,
+  };
+
+  return NextResponse.json({ order: transformed });
 }
 
 export async function PATCH(

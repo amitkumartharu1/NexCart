@@ -59,6 +59,166 @@ interface Review {
   user: { name: string | null; image: string | null } | null;
 }
 
+// ---------------------------------------------------------------------------
+// Review Form Component
+// ---------------------------------------------------------------------------
+
+function ReviewForm({
+  productId,
+  onSubmitted,
+}: {
+  productId: string;
+  onSubmitted: () => void;
+}) {
+  const { data: session } = useSession();
+  const router = useRouter();
+  const [rating, setRating] = useState(0);
+  const [hovered, setHovered] = useState(0);
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
+  if (!session?.user) {
+    return (
+      <div className="p-5 rounded-2xl border border-border bg-background-subtle text-center">
+        <p className="text-sm text-foreground-muted mb-3">
+          Sign in to leave a review
+        </p>
+        <button
+          onClick={() => router.push(`/auth/login?callbackUrl=${window.location.pathname}`)}
+          className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-primary text-primary-foreground text-sm font-semibold"
+        >
+          Sign in
+        </button>
+      </div>
+    );
+  }
+
+  if (submitted) {
+    return (
+      <div className="p-5 rounded-2xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-800 text-center">
+        <CheckCircle2 size={28} className="mx-auto text-emerald-600 mb-2" />
+        <p className="font-semibold text-emerald-700 dark:text-emerald-400">Thank you for your review!</p>
+        <p className="text-xs text-foreground-muted mt-1">
+          Your review will appear after admin approval.
+        </p>
+      </div>
+    );
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (rating === 0) { toast.error("Please select a star rating"); return; }
+    setSubmitting(true);
+    try {
+      const res = await fetch("/api/reviews", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId, rating, title: title.trim() || null, body: body.trim() || null }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Failed to submit review");
+      setSubmitted(true);
+      onSubmitted();
+      toast.success("Review submitted — pending approval!");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to submit");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="p-5 rounded-2xl border border-border bg-background-subtle space-y-4"
+      style={{ animation: "fadeInUp 0.4s ease-out" }}
+    >
+      <h3 className="text-sm font-bold text-foreground">Write a Review</h3>
+
+      {/* Star picker */}
+      <div>
+        <p className="text-xs text-foreground-muted mb-1.5 font-medium">Your Rating *</p>
+        <div className="flex items-center gap-1">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <button
+              key={n}
+              type="button"
+              onMouseEnter={() => setHovered(n)}
+              onMouseLeave={() => setHovered(0)}
+              onClick={() => setRating(n)}
+              className="transition-transform hover:scale-125"
+              aria-label={`Rate ${n} star${n > 1 ? "s" : ""}`}
+            >
+              <Star
+                size={28}
+                className={cn(
+                  n <= (hovered || rating)
+                    ? "fill-yellow-400 text-yellow-400"
+                    : "text-foreground-subtle"
+                )}
+              />
+            </button>
+          ))}
+          {rating > 0 && (
+            <span className="text-xs text-foreground-muted ml-2">
+              {["", "Poor", "Fair", "Good", "Very Good", "Excellent"][rating]}
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Title */}
+      <div>
+        <label className="block text-xs font-medium text-foreground-muted mb-1">
+          Review Title <span className="opacity-60">(optional)</span>
+        </label>
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          maxLength={120}
+          placeholder="e.g. Great product, highly recommend!"
+          className="w-full px-3 py-2 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-ring/30"
+        />
+      </div>
+
+      {/* Body */}
+      <div>
+        <label className="block text-xs font-medium text-foreground-muted mb-1">
+          Your Review <span className="opacity-60">(optional)</span>
+        </label>
+        <textarea
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          maxLength={2000}
+          rows={4}
+          placeholder="Share your experience with this product…"
+          className="w-full px-3 py-2 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-ring/30 resize-none"
+        />
+        <p className="text-[11px] text-foreground-muted mt-1 text-right">
+          {body.length}/2000
+        </p>
+      </div>
+
+      <button
+        type="submit"
+        disabled={submitting || rating === 0}
+        className={cn(
+          "flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold text-sm transition-all",
+          submitting || rating === 0
+            ? "bg-background-muted text-foreground-muted cursor-not-allowed"
+            : "bg-primary text-primary-foreground hover:bg-primary-hover hover:-translate-y-0.5"
+        )}
+      >
+        <Star size={14} />
+        {submitting ? "Submitting…" : "Submit Review"}
+      </button>
+    </form>
+  );
+}
+
 interface Product {
   id: string;
   name: string;
@@ -739,18 +899,22 @@ export default function ProductPage({
               {product.name}
             </h1>
 
-            {/* Rating */}
-            {product.rating !== null && (
-              <div className="flex items-center gap-2">
-                <StarRating rating={product.rating} size={16} />
-                <span className="text-sm font-medium text-foreground">
-                  {Number(product.rating).toFixed(1)}
-                </span>
-                <span className="text-sm text-foreground-muted">
-                  ({product.reviewCount} {product.reviewCount === 1 ? "review" : "reviews"})
-                </span>
-              </div>
-            )}
+            {/* Rating — computed from approved reviews array */}
+            {product.reviews.length > 0 && (() => {
+              const avg = product.reviews.reduce((sum, r) => sum + r.rating, 0) / product.reviews.length;
+              const count = product.reviews.length;
+              return (
+                <div className="flex items-center gap-2">
+                  <StarRating rating={avg} size={16} />
+                  <span className="text-sm font-medium text-foreground">
+                    {avg.toFixed(1)}
+                  </span>
+                  <span className="text-sm text-foreground-muted">
+                    ({count} {count === 1 ? "review" : "reviews"})
+                  </span>
+                </div>
+              );
+            })()}
 
             {/* Stock */}
             <div className="flex flex-wrap gap-2">
@@ -947,9 +1111,24 @@ export default function ProductPage({
 
           {activeTab === "reviews" && (
             <>
+              {/* ── Review Submission Form ── */}
+              <div className="mb-8">
+                <ReviewForm
+                  productId={product.id}
+                  onSubmitted={() => {
+                    // Re-fetch product to pick up new review count
+                    fetch(`/api/products/${product.slug}`)
+                      .then((r) => r.json())
+                      .then((d) => { if (d.product) setProduct(d.product); })
+                      .catch(() => {});
+                  }}
+                />
+              </div>
+
+              {/* ── Existing Reviews ── */}
               {product.reviews.length === 0 ? (
                 <p className="text-foreground-muted text-sm">
-                  No reviews yet. Be the first to review this product!
+                  No approved reviews yet. Be the first!
                 </p>
               ) : (
                 <div className="space-y-5">
