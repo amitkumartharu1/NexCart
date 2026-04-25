@@ -4,6 +4,11 @@ import { useState, useEffect } from "react";
 import { Mail, Phone, MapPin, Clock, Send } from "lucide-react";
 import { toast } from "sonner";
 
+// Default Google Maps embed (Kathmandu, Nepal) — works without API key
+// Admin can override via Admin → Contact → Settings
+const DEFAULT_MAP_URL =
+  "https://maps.google.com/maps?q=Kathmandu+Nepal&output=embed&hl=en&z=14";
+
 const DEFAULTS = {
   contact_email:       "support@nexcart.com",
   contact_email_sub:   "We reply within 24 hours",
@@ -13,7 +18,7 @@ const DEFAULTS = {
   contact_address_sub: "Visit our showroom",
   contact_hours:       "Mon-Sat: 9am - 6pm",
   contact_hours_sub:   "Closed on Sundays",
-  contact_map_url:     "",
+  contact_map_url:     DEFAULT_MAP_URL,
 };
 
 type Settings = typeof DEFAULTS;
@@ -100,21 +105,19 @@ export default function ContactPage() {
                 </div>
               ))}
 
-              {/* Google Maps embed */}
-              {info.contact_map_url && (
-                <div className="rounded-xl overflow-hidden border border-border aspect-video">
-                  <iframe
-                    src={info.contact_map_url}
-                    width="100%"
-                    height="100%"
-                    style={{ border: 0 }}
-                    allowFullScreen
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                    title="Store location"
-                  />
-                </div>
-              )}
+              {/* Google Maps embed — uses admin-configured URL or default Kathmandu */}
+              <div className="rounded-xl overflow-hidden border border-border aspect-video">
+                <iframe
+                  src={info.contact_map_url || DEFAULT_MAP_URL}
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  title="Store location"
+                />
+              </div>
             </div>
 
             {/* Contact form */}

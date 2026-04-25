@@ -54,9 +54,10 @@ export async function PATCH(req: NextRequest) {
   );
 
   // Revalidate all public pages that consume settings
-  revalidatePath("/", "layout");   // root layout — covers navbar PromoBar
+  revalidatePath("/", "layout");   // root layout — covers navbar, footer, PromoBar
   revalidatePath("/");             // homepage hero + offer section
   revalidatePath("/shop");
+  revalidatePath("/contact");
   revalidatePath("/checkout");
   revalidatePath("/policies/returns");
   revalidatePath("/policies/shipping");

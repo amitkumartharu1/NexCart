@@ -2,47 +2,63 @@ import Link from "next/link";
 import { Mail, MapPin, Phone } from "lucide-react";
 import { headers } from "next/headers";
 
-const FOOTER_LINKS = {
-  Shop: [
-    { label: "All Products", href: "/shop" },
-    { label: "Electronics", href: "/categories/electronics" },
-    { label: "Gadgets", href: "/categories/gadgets" },
-    { label: "Fashion", href: "/categories/fashion" },
-    { label: "New Arrivals", href: "/shop?filter=new" },
-    { label: "Best Sellers", href: "/shop?filter=bestseller" },
-  ],
-  Services: [
-    { label: "All Services", href: "/services" },
-    { label: "Repair", href: "/services/repair" },
-    { label: "Installation", href: "/services/installation" },
-    { label: "Consultation", href: "/services/consultation" },
-    { label: "Book a Service", href: "/services#book" },
-  ],
-  Company: [
-    { label: "About Us", href: "/about" },
-    { label: "Contact", href: "/contact" },
-    { label: "Blog", href: "/blog" },
-    { label: "Careers", href: "/careers" },
-    { label: "Press", href: "/press" },
-  ],
-  Support: [
-    { label: "FAQ", href: "/faq" },
-    { label: "Shipping Policy", href: "/policies/shipping" },
-    { label: "Return Policy", href: "/policies/returns" },
-    { label: "Privacy Policy", href: "/policies/privacy" },
-    { label: "Terms of Service", href: "/policies/terms" },
-  ],
-};
+// ─── Footer link types ────────────────────────────────────────────────────────
+
+interface FooterLink  { label: string; href: string; enabled?: boolean }
+interface FooterGroup { group: string; links: FooterLink[] }
+
+// Hardcoded fallback — used when DB has no footer_links setting yet
+const DEFAULT_FOOTER_GROUPS: FooterGroup[] = [
+  {
+    group: "Shop",
+    links: [
+      { label: "All Products", href: "/shop" },
+      { label: "Electronics",  href: "/categories/electronics" },
+      { label: "Gadgets",      href: "/categories/gadgets" },
+      { label: "Fashion",      href: "/categories/fashion" },
+      { label: "New Arrivals", href: "/shop?filter=new" },
+      { label: "Best Sellers", href: "/shop?filter=bestseller" },
+    ],
+  },
+  {
+    group: "Services",
+    links: [
+      { label: "All Services",   href: "/services" },
+      { label: "Repair",         href: "/services/repair" },
+      { label: "Installation",   href: "/services/installation" },
+      { label: "Consultation",   href: "/services/consultation" },
+      { label: "Book a Service", href: "/services#book" },
+    ],
+  },
+  {
+    group: "Company",
+    links: [
+      { label: "About Us", href: "/about" },
+      { label: "Contact",  href: "/contact" },
+      { label: "Blog",     href: "/blog" },
+      { label: "Careers",  href: "/careers" },
+      { label: "Press",    href: "/press" },
+    ],
+  },
+  {
+    group: "Support",
+    links: [
+      { label: "FAQ",              href: "/faq" },
+      { label: "Shipping Policy",  href: "/policies/shipping" },
+      { label: "Return Policy",    href: "/policies/returns" },
+      { label: "Privacy Policy",   href: "/policies/privacy" },
+      { label: "Terms of Service", href: "/policies/terms" },
+    ],
+  },
+];
 
 // Fetch site settings — uses the host header so it works on any port
 async function getSiteSettings(): Promise<Record<string, string>> {
   try {
-    const hdrs = await headers();
-    const host = hdrs.get("host") ?? "localhost:3001";
+    const hdrs  = await headers();
+    const host  = hdrs.get("host") ?? "localhost:3001";
     const proto = hdrs.get("x-forwarded-proto") ?? "http";
-    const res = await fetch(`${proto}://${host}/api/settings`, {
-      cache: "no-store",
-    });
+    const res   = await fetch(`${proto}://${host}/api/settings`, { cache: "no-store" });
     if (!res.ok) return {};
     const data = (await res.json()) as { settings: Record<string, string | null> };
     const settings: Record<string, string> = {};
@@ -53,6 +69,17 @@ async function getSiteSettings(): Promise<Record<string, string>> {
   } catch {
     return {};
   }
+}
+
+// Parse footer groups from settings or fall back to defaults
+function getFooterGroups(settings: Record<string, string>): FooterGroup[] {
+  const raw = settings["footer_links"];
+  if (!raw) return DEFAULT_FOOTER_GROUPS;
+  try {
+    const parsed = JSON.parse(raw) as FooterGroup[];
+    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+  } catch { /* fall through */ }
+  return DEFAULT_FOOTER_GROUPS;
 }
 
 // Social media SVG icons
@@ -88,7 +115,8 @@ function YoutubeIcon() {
 }
 
 export async function Footer() {
-  const s = await getSiteSettings();
+  const s            = await getSiteSettings();
+  const footerGroups = getFooterGroups(s);
 
   const siteName    = s["site_name"]    ?? "NexCart";
   const siteTagline = s["site_tagline"] ?? "Smart Shopping. Modern Services. One Premium Platform.";
@@ -192,26 +220,30 @@ export async function Footer() {
             )}
           </div>
 
-          {/* Link columns */}
-          {Object.entries(FOOTER_LINKS).map(([group, links]) => (
-            <div key={group} className="space-y-4">
-              <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
-                {group}
-              </h3>
-              <ul className="space-y-2.5">
-                {links.map((link) => (
-                  <li key={link.href}>
-                    <Link
-                      href={link.href}
-                      className="text-sm text-foreground-muted hover:text-foreground transition-colors"
-                    >
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
+          {/* Link columns — dynamic from Admin → Navigation */}
+          {footerGroups.map((grp) => {
+            const visibleLinks = grp.links.filter((l) => l.enabled !== false);
+            if (visibleLinks.length === 0) return null;
+            return (
+              <div key={grp.group} className="space-y-4">
+                <h3 className="text-sm font-semibold text-foreground uppercase tracking-wider">
+                  {grp.group}
+                </h3>
+                <ul className="space-y-2.5">
+                  {visibleLinks.map((link) => (
+                    <li key={link.href + link.label}>
+                      <Link
+                        href={link.href}
+                        className="text-sm text-foreground-muted hover:text-foreground transition-colors"
+                      >
+                        {link.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
         </div>
       </div>
 

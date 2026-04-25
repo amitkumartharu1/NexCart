@@ -92,9 +92,10 @@ const NAV_ITEMS: NavItem[] = [
     icon: FileText,
     roles: ["SUPER_ADMIN", "ADMIN"],
     children: [
-      { label: "Banners", href: "/admin/banners", roles: ["SUPER_ADMIN", "ADMIN"] },
-      { label: "Blog", href: "/admin/content", roles: ["SUPER_ADMIN", "ADMIN"] },
-      { label: "SEO", href: "/admin/seo", roles: ["SUPER_ADMIN", "ADMIN"] },
+      { label: "Banners",     href: "/admin/banners",     roles: ["SUPER_ADMIN", "ADMIN"] },
+      { label: "Blog",        href: "/admin/content",     roles: ["SUPER_ADMIN", "ADMIN"] },
+      { label: "Navigation",  href: "/admin/navigation",  roles: ["SUPER_ADMIN", "ADMIN"] },
+      { label: "SEO",         href: "/admin/seo",         roles: ["SUPER_ADMIN", "ADMIN"] },
     ],
   },
   {

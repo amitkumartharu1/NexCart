@@ -399,18 +399,38 @@ function SettingsTab() {
             <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
               <Globe size={14} className="text-primary" />
             </div>
-            <span className="text-sm font-semibold text-foreground">Google Maps Embed URL</span>
+            <div>
+              <span className="text-sm font-semibold text-foreground">Google Maps Embed URL</span>
+              <p className="text-xs text-foreground-muted">Displayed on the Contact page for customers</p>
+            </div>
           </div>
           <input
             type="url"
             value={settings.contact_map_url}
             onChange={(e) => set("contact_map_url", e.target.value)}
-            placeholder="https://www.google.com/maps/embed?pb=…"
+            placeholder="https://maps.google.com/maps?q=Your+Location&output=embed"
             className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
           />
-          <p className="text-xs text-foreground-subtle mt-1.5">
-            Go to Google Maps → Share → Embed → copy the src="…" URL
-          </p>
+          <div className="mt-2 space-y-1">
+            <p className="text-xs text-foreground-subtle">
+              <strong>Option A (easy):</strong> Use <code className="bg-background px-1 rounded">https://maps.google.com/maps?q=Your+Address+Here&output=embed</code>
+            </p>
+            <p className="text-xs text-foreground-subtle">
+              <strong>Option B (precise):</strong> Google Maps → Share → Embed a map → copy the <code className="bg-background px-1 rounded">src="…"</code> URL
+            </p>
+          </div>
+          {settings.contact_map_url && (
+            <div className="mt-3 rounded-xl overflow-hidden border border-border aspect-video">
+              <iframe
+                src={settings.contact_map_url}
+                width="100%"
+                height="100%"
+                style={{ border: 0 }}
+                loading="lazy"
+                title="Map preview"
+              />
+            </div>
+          )}
         </div>
       </div>
 
