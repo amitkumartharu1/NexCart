@@ -1100,7 +1100,7 @@ export default function ProductPage({
 
           {activeTab === "description" && product.description && (
             <div
-              className="prose prose-sm max-w-none text-foreground-muted leading-relaxed"
+              className="product-description"
               dangerouslySetInnerHTML={{ __html: product.description }}
             />
           )}

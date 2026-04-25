@@ -281,3 +281,143 @@ body {
   color: var(--foreground-muted);
   font-style: italic;
 }
+
+/* ==========================================================================
+   Product Description — rendered HTML (output of RichTextEditor / Tiptap)
+   Uses theme CSS vars so dark/light mode both look correct automatically.
+   Apply class="product-description" to the dangerouslySetInnerHTML wrapper.
+   ========================================================================== */
+
+.product-description {
+  color: var(--foreground);
+  font-size: 0.9375rem;
+  line-height: 1.75;
+  word-break: break-word;
+}
+
+/* Headings */
+.product-description h1,
+.product-description h2,
+.product-description h3,
+.product-description h4,
+.product-description h5,
+.product-description h6 {
+  color: var(--foreground);
+  font-weight: 700;
+  line-height: 1.3;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+}
+.product-description h1 { font-size: 1.5rem; }
+.product-description h2 { font-size: 1.25rem; }
+.product-description h3 { font-size: 1.1rem; }
+.product-description h4 { font-size: 1rem; }
+
+/* Paragraphs */
+.product-description p {
+  margin-top: 0;
+  margin-bottom: 0.85em;
+}
+.product-description p:last-child { margin-bottom: 0; }
+
+/* Lists */
+.product-description ul,
+.product-description ol {
+  padding-left: 1.5rem;
+  margin-bottom: 0.85em;
+}
+.product-description ul { list-style-type: disc; }
+.product-description ol { list-style-type: decimal; }
+.product-description li {
+  margin-bottom: 0.3em;
+  color: var(--foreground);
+}
+.product-description li::marker { color: var(--primary); }
+
+/* Links */
+.product-description a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: opacity 0.15s;
+}
+.product-description a:hover { opacity: 0.8; }
+
+/* Bold / Italic */
+.product-description strong { color: var(--foreground); font-weight: 700; }
+.product-description em     { color: var(--foreground-muted); }
+
+/* Code */
+.product-description code {
+  background: var(--background-muted);
+  color: var(--foreground);
+  padding: 0.15em 0.4em;
+  border-radius: 0.3rem;
+  font-size: 0.85em;
+  font-family: var(--font-mono, monospace);
+  border: 1px solid var(--border);
+}
+.product-description pre {
+  background: var(--background-muted);
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  overflow-x: auto;
+  margin-bottom: 1em;
+}
+.product-description pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.85em;
+}
+
+/* Blockquote */
+.product-description blockquote {
+  border-left: 3px solid var(--primary);
+  padding-left: 1rem;
+  margin: 1em 0;
+  color: var(--foreground-muted);
+  font-style: italic;
+}
+
+/* Horizontal rule */
+.product-description hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1.5em 0;
+}
+
+/* Images */
+.product-description img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  margin: 1em 0;
+  display: block;
+  border: 1px solid var(--border);
+}
+
+/* Tables */
+.product-description table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1em;
+  font-size: 0.9em;
+}
+.product-description th {
+  background: var(--background-muted);
+  color: var(--foreground);
+  font-weight: 600;
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+}
+.product-description td {
+  color: var(--foreground);
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+}
+.product-description tr:nth-child(even) td {
+  background: var(--background-subtle);
+}
