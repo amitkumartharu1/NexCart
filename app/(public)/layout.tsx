@@ -1,6 +1,8 @@
 import { Suspense } from "react";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
+import { ChatWidget } from "@/components/chat/ChatWidget";
+import { PromoPopup } from "@/components/chat/PromoPopup";
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -10,6 +12,10 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
       <Suspense fallback={<FooterSkeleton />}>
         <Footer />
       </Suspense>
+      {/* AI Chat Widget — floating bubble (bottom-right) */}
+      <ChatWidget />
+      {/* Promo Popup — psychology-based offer popup */}
+      <PromoPopup />
     </>
   );
 }

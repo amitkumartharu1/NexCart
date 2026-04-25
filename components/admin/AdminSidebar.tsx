@@ -64,6 +64,12 @@ const NAV_ITEMS: NavItem[] = [
     roles: ["SUPER_ADMIN", "ADMIN"],
   },
   {
+    label: "Chat",
+    href: "/admin/chat",
+    icon: MessageSquare,
+    roles: ["SUPER_ADMIN", "ADMIN", "MANAGER"],
+  },
+  {
     label: "Reviews",
     href: "/admin/reviews",
     icon: Star,
