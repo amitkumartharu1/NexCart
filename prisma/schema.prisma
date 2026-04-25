@@ -934,7 +934,7 @@ model Conversation {
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 
-  @@index([sessionId])
+  // sessionId is @unique above — that unique index already serves as a lookup index
   @@index([channel])
   @@index([status])
   @@index([createdAt])
