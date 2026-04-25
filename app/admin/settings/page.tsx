@@ -16,6 +16,8 @@ import {
   Gift,
   Truck,
   CreditCard,
+  Key,
+  MessageSquare,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -114,6 +116,13 @@ interface Settings {
   giveaway_title: string;
   giveaway_description: string;
   giveaway_end_date: string;
+  // API Keys
+  ai_openai_key: string;
+  ai_cohere_key: string;
+  ai_huggingface_key: string;
+  twilio_account_sid: string;
+  twilio_auth_token: string;
+  twilio_phone_number: string;
 }
 
 const DEFAULTS: Settings = {
@@ -172,6 +181,13 @@ const DEFAULTS: Settings = {
   giveaway_title: "",
   giveaway_description: "",
   giveaway_end_date: "",
+  // API Keys
+  ai_openai_key: "",
+  ai_cohere_key: "",
+  ai_huggingface_key: "",
+  twilio_account_sid: "",
+  twilio_auth_token: "",
+  twilio_phone_number: "",
 };
 
 export default function AdminSettingsPage() {
@@ -184,6 +200,15 @@ export default function AdminSettingsPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [khaltiQrPreview, setKhaltiQrPreview] = useState<string>("");
   const khaltiFileRef = useRef<HTMLInputElement>(null);
+  const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
+
+  function toggleKeyVisibility(field: string) {
+    setVisibleKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(field)) next.delete(field); else next.add(field);
+      return next;
+    });
+  }
 
   useEffect(() => {
     fetch("/api/admin/settings")
@@ -254,10 +279,12 @@ export default function AdminSettingsPage() {
              : key.startsWith("social_")   ? "social"
              : key.startsWith("qr_")       ? "payment"
              : key.startsWith("payment_")  ? "payment"
+             : key.startsWith("khalti_")   ? "payment"
              : key === "shipping_mode"     ? "shipping"
              : key.startsWith("warranty_") || key.startsWith("return_") ? "policy"
              : key.startsWith("promo_")    ? "promo"
              : key.startsWith("offer_") || key.startsWith("giveaway_") ? "offers"
+             : key.startsWith("ai_") || key.startsWith("twilio_") ? "integrations"
              : "general",
         label: key.replace(/_/g, " "),
       }));
@@ -917,6 +944,102 @@ export default function AdminSettingsPage() {
           </div>
         </section>
 
+        {/* ── API Keys & Integrations ── */}
+        <section className="bg-background rounded-xl border border-border p-6 space-y-6">
+          <div className="flex items-center gap-2 mb-1">
+            <Key size={16} className="text-primary" />
+            <h2 className="font-semibold text-foreground">API Keys &amp; Integrations</h2>
+          </div>
+          <p className="text-xs text-foreground-muted -mt-2">
+            Keys stored here are used when environment variables are not set. Values are masked — click the eye icon to reveal.
+            Never share these keys publicly.
+          </p>
+
+          {/* AI Providers */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-foreground">🤖 AI Providers</span>
+              <span className="text-xs text-foreground-muted">Priority: OpenAI → Cohere → HuggingFace → rule-based</span>
+            </div>
+
+            <ApiKeyField
+              label="OpenAI API Key"
+              hint={<>Get yours at <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2">platform.openai.com/api-keys</a>. Uses gpt-3.5-turbo by default.</>}
+              placeholder="sk-proj-••••••••••••••••••••••••"
+              value={settings.ai_openai_key}
+              visible={visibleKeys.has("ai_openai_key")}
+              onChange={(v) => set("ai_openai_key", v)}
+              onToggle={() => toggleKeyVisibility("ai_openai_key")}
+            />
+
+            <ApiKeyField
+              label="Cohere API Key"
+              hint={<>Get yours at <a href="https://dashboard.cohere.com/api-keys" target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2">dashboard.cohere.com</a>. Uses command-r model. Free tier available.</>}
+              placeholder="••••••••••••••••••••••••••••••••"
+              value={settings.ai_cohere_key}
+              visible={visibleKeys.has("ai_cohere_key")}
+              onChange={(v) => set("ai_cohere_key", v)}
+              onToggle={() => toggleKeyVisibility("ai_cohere_key")}
+            />
+
+            <ApiKeyField
+              label="HuggingFace API Token"
+              hint={<>Get yours at <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2">huggingface.co/settings/tokens</a>. Free inference API included.</>}
+              placeholder="hf_••••••••••••••••••••••••••••••"
+              value={settings.ai_huggingface_key}
+              visible={visibleKeys.has("ai_huggingface_key")}
+              onChange={(v) => set("ai_huggingface_key", v)}
+              onToggle={() => toggleKeyVisibility("ai_huggingface_key")}
+            />
+          </div>
+
+          <div className="border-t border-border" />
+
+          {/* Twilio SMS */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <MessageSquare size={14} className="text-foreground-muted" />
+              <span className="text-sm font-semibold text-foreground">Twilio SMS / WhatsApp</span>
+              <span className="text-xs text-foreground-muted">For AI chat via SMS &amp; WhatsApp</span>
+            </div>
+
+            <p className="text-xs text-foreground-muted bg-background-subtle rounded-lg px-3 py-2 border border-border">
+              📱 Set your Twilio webhook URL to: <code className="text-primary font-mono text-[11px]">https://your-domain.com/api/sms/webhook</code>
+              <br />Get credentials at <a href="https://console.twilio.com" target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2">console.twilio.com</a> (free trial available).
+            </p>
+
+            <ApiKeyField
+              label="Account SID"
+              hint="Found on your Twilio Console dashboard. Starts with AC..."
+              placeholder="AC••••••••••••••••••••••••••••••••"
+              value={settings.twilio_account_sid}
+              visible={visibleKeys.has("twilio_account_sid")}
+              onChange={(v) => set("twilio_account_sid", v)}
+              onToggle={() => toggleKeyVisibility("twilio_account_sid")}
+            />
+
+            <ApiKeyField
+              label="Auth Token"
+              hint="Found below the Account SID on your Twilio Console dashboard."
+              placeholder="••••••••••••••••••••••••••••••••"
+              value={settings.twilio_auth_token}
+              visible={visibleKeys.has("twilio_auth_token")}
+              onChange={(v) => set("twilio_auth_token", v)}
+              onToggle={() => toggleKeyVisibility("twilio_auth_token")}
+            />
+
+            <Field label="Twilio Phone Number" hint="Your Twilio number in E.164 format, e.g. +12345678900">
+              <input
+                type="text"
+                value={settings.twilio_phone_number}
+                onChange={(e) => set("twilio_phone_number", e.target.value)}
+                placeholder="+12345678900"
+                className={inputCls}
+              />
+            </Field>
+          </div>
+        </section>
+
         <button
           type="submit"
           disabled={saving}
@@ -1008,6 +1131,64 @@ function ToggleSwitch({
       {enabled ? <Eye size={12} /> : <EyeOff size={12} />}
       {enabled ? "On" : "Off"}
     </button>
+  );
+}
+
+function ApiKeyField({
+  label,
+  hint,
+  placeholder,
+  value,
+  visible,
+  onChange,
+  onToggle,
+}: {
+  label: string;
+  hint: React.ReactNode;
+  placeholder: string;
+  value: string;
+  visible: boolean;
+  onChange: (v: string) => void;
+  onToggle: () => void;
+}) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-foreground mb-1.5">{label}</label>
+      <div className="relative">
+        <input
+          type={visible ? "text" : "password"}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          autoComplete="off"
+          spellCheck={false}
+          className={inputCls + " pr-10 font-mono text-xs"}
+        />
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-label={visible ? "Hide key" : "Show key"}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground-muted hover:text-foreground transition-colors"
+        >
+          {visible ? <EyeOff size={15} /> : <Eye size={15} />}
+        </button>
+      </div>
+      {value && (
+        <div className="mt-1 flex items-center gap-1.5">
+          <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-full">
+            ✓ Key saved
+          </span>
+          <button
+            type="button"
+            onClick={() => onChange("")}
+            className="text-[10px] text-destructive hover:underline"
+          >
+            Clear
+          </button>
+        </div>
+      )}
+      {hint && <p className="text-xs text-foreground-muted mt-1">{hint}</p>}
+    </div>
   );
 }
 

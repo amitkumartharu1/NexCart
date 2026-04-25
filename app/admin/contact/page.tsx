@@ -309,7 +309,15 @@ function SettingsTab() {
           setSettings((prev) => {
             const merged = { ...prev };
             for (const key of Object.keys(prev) as (keyof ContactSettings)[]) {
-              if (data.settings[key] !== undefined) merged[key] = data.settings[key] ?? "";
+              if (data.settings[key] !== undefined) {
+                let val = data.settings[key] ?? "";
+                // Auto-extract src if stored value is a full iframe HTML
+                if (key === "contact_map_url" && val.includes("<iframe")) {
+                  const match = val.match(/src="([^"]+)"/);
+                  if (match?.[1]) val = match[1];
+                }
+                merged[key] = val;
+              }
             }
             return merged;
           });
@@ -405,18 +413,31 @@ function SettingsTab() {
             </div>
           </div>
           <input
-            type="url"
+            type="text"
             value={settings.contact_map_url}
             onChange={(e) => set("contact_map_url", e.target.value)}
-            placeholder="https://maps.google.com/maps?q=Your+Location&output=embed"
+            onPaste={(e) => {
+              // Auto-extract src="…" if user pastes full <iframe> HTML
+              const pasted = e.clipboardData.getData("text");
+              const srcMatch = pasted.match(/src="([^"]+)"/);
+              if (srcMatch?.[1]) {
+                e.preventDefault();
+                set("contact_map_url", srcMatch[1]);
+              }
+            }}
+            placeholder="Paste Google Maps embed URL or full <iframe> code — src is auto-extracted"
             className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
           />
-          <div className="mt-2 space-y-1">
+          <div className="mt-2 space-y-1 bg-background-subtle rounded-lg p-3">
+            <p className="text-xs font-semibold text-foreground-muted mb-1">How to get your map URL:</p>
             <p className="text-xs text-foreground-subtle">
-              <strong>Option A (easy):</strong> Use <code className="bg-background px-1 rounded">https://maps.google.com/maps?q=Your+Address+Here&output=embed</code>
+              1. Open <a href="https://maps.google.com" target="_blank" rel="noopener noreferrer" className="text-primary underline">maps.google.com</a> → search your location
             </p>
             <p className="text-xs text-foreground-subtle">
-              <strong>Option B (precise):</strong> Google Maps → Share → Embed a map → copy the <code className="bg-background px-1 rounded">src="…"</code> URL
+              2. Click <strong>Share</strong> → <strong>Embed a map</strong> → Click <strong>Copy HTML</strong>
+            </p>
+            <p className="text-xs text-foreground-subtle">
+              3. Paste the copied HTML here — the <code className="bg-background px-1 rounded text-primary">src="…"</code> URL will be auto-extracted ✓
             </p>
           </div>
           {settings.contact_map_url && (

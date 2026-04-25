@@ -2,17 +2,51 @@
  * Multi-provider AI chat wrapper.
  * Priority: OpenAI → Cohere → HuggingFace → rule-based fallback
  * Server-only — never import in client components.
+ * API keys can be set via env vars OR via admin Settings → API Keys.
+ * Env vars always take precedence over DB-stored keys.
  */
+
+import { prisma } from "@/lib/db/prisma";
 
 export interface AIMessage {
   role: "system" | "user" | "assistant";
   content: string;
 }
 
+// ─── DB key cache (per-request, not module-level) ─────────────────────────────
+
+let _keyCache: Record<string, string> | null = null;
+let _keyCacheTime = 0;
+const KEY_CACHE_TTL = 60_000; // 1 minute
+
+async function getDbKeys(): Promise<Record<string, string>> {
+  const now = Date.now();
+  if (_keyCache && now - _keyCacheTime < KEY_CACHE_TTL) return _keyCache;
+
+  try {
+    const rows = await prisma.siteSettings.findMany({
+      where: { key: { in: ["ai_openai_key", "ai_cohere_key", "ai_huggingface_key", "twilio_account_sid", "twilio_auth_token", "twilio_phone_number"] } },
+      select: { key: true, value: true },
+    });
+    _keyCache = Object.fromEntries(rows.map((r) => [r.key, r.value ?? ""]));
+    _keyCacheTime = now;
+  } catch {
+    _keyCache = {};
+    _keyCacheTime = now;
+  }
+  return _keyCache;
+}
+
+/** Returns env var value if set, otherwise falls back to DB setting. */
+async function resolveKey(envVar: string, dbKey: string): Promise<string | undefined> {
+  if (process.env[envVar]) return process.env[envVar];
+  const db = await getDbKeys();
+  return db[dbKey] || undefined;
+}
+
 // ─── OpenAI / OpenAI-compatible ───────────────────────────────────────────────
 
-async function callOpenAI(messages: AIMessage[]): Promise<string> {
-  const apiKey  = process.env.OPENAI_API_KEY;
+async function callOpenAI(messages: AIMessage[], apiKey: string): Promise<string> {
   const baseUrl = process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1";
   const model   = process.env.OPENAI_MODEL    ?? "gpt-3.5-turbo";
 
@@ -29,9 +63,7 @@ async function callOpenAI(messages: AIMessage[]): Promise<string> {
 
 // ─── Cohere ───────────────────────────────────────────────────────────────────
 
-async function callCohere(messages: AIMessage[]): Promise<string> {
-  const apiKey = process.env.COHERE_API_KEY!;
-
+async function callCohere(messages: AIMessage[], apiKey: string): Promise<string> {
   // Convert messages to Cohere chat history format
   const history = messages.slice(0, -1).map((m) => ({
     role:    m.role === "user" ? "USER" : "CHATBOT",
@@ -60,9 +92,8 @@ async function callCohere(messages: AIMessage[]): Promise<string> {
 
 // ─── HuggingFace ──────────────────────────────────────────────────────────────
 
-async function callHuggingFace(messages: AIMessage[]): Promise<string> {
-  const apiKey = process.env.HUGGINGFACE_API_KEY!;
-  const model  = process.env.HF_MODEL ?? "HuggingFaceH4/zephyr-7b-beta";
+async function callHuggingFace(messages: AIMessage[], apiKey: string): Promise<string> {
+  const model = process.env.HF_MODEL ?? "HuggingFaceH4/zephyr-7b-beta";
 
   // Build prompt string for instruct models
   const prompt = messages
@@ -113,20 +144,45 @@ function ruleBasedResponse(userMessage: string): string {
 // ─── Main entry ───────────────────────────────────────────────────────────────
 
 export async function getAIResponse(messages: AIMessage[]): Promise<string> {
+  // Resolve keys: env var first, then DB setting
+  const [openaiKey, cohereKey, hfKey] = await Promise.all([
+    resolveKey("OPENAI_API_KEY",      "ai_openai_key"),
+    resolveKey("COHERE_API_KEY",      "ai_cohere_key"),
+    resolveKey("HUGGINGFACE_API_KEY", "ai_huggingface_key"),
+  ]);
+
   // Try providers in priority order
-  if (process.env.OPENAI_API_KEY) {
-    try { return await callOpenAI(messages); } catch (e) { console.error("[AI] OpenAI failed:", e); }
+  if (openaiKey) {
+    try { return await callOpenAI(messages, openaiKey); } catch (e) { console.error("[AI] OpenAI failed:", e); }
   }
-  if (process.env.COHERE_API_KEY) {
-    try { return await callCohere(messages); } catch (e) { console.error("[AI] Cohere failed:", e); }
+  if (cohereKey) {
+    try { return await callCohere(messages, cohereKey); } catch (e) { console.error("[AI] Cohere failed:", e); }
   }
-  if (process.env.HUGGINGFACE_API_KEY) {
-    try { return await callHuggingFace(messages); } catch (e) { console.error("[AI] HuggingFace failed:", e); }
+  if (hfKey) {
+    try { return await callHuggingFace(messages, hfKey); } catch (e) { console.error("[AI] HuggingFace failed:", e); }
   }
 
   // Rule-based fallback
   const lastUser = [...messages].reverse().find((m) => m.role === "user");
   return ruleBasedResponse(lastUser?.content ?? "");
+}
+
+/**
+ * Resolves Twilio credentials — env vars first, then DB settings.
+ * Returns null if neither is configured.
+ */
+export async function getTwilioConfig(): Promise<{
+  accountSid: string;
+  authToken:  string;
+  phoneNumber: string;
+} | null> {
+  const [sid, token, phone] = await Promise.all([
+    resolveKey("TWILIO_ACCOUNT_SID",   "twilio_account_sid"),
+    resolveKey("TWILIO_AUTH_TOKEN",    "twilio_auth_token"),
+    resolveKey("TWILIO_PHONE_NUMBER",  "twilio_phone_number"),
+  ]);
+  if (!sid || !token || !phone) return null;
+  return { accountSid: sid, authToken: token, phoneNumber: phone };
 }
 
 // ─── System prompt builder ────────────────────────────────────────────────────

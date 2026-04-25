@@ -1,5 +1,6 @@
 import { AdminStatsOverview } from "@/components/admin/dashboard/StatsOverview";
 import { AdminRevenueChart } from "@/components/admin/dashboard/RevenueChart";
+import { TopCategoriesChart } from "@/components/admin/dashboard/TopCategoriesChart";
 
 export const metadata = { title: "Analytics — Admin | NexCart" };
 
@@ -13,10 +14,7 @@ export default function AdminAnalyticsPage() {
       <AdminStatsOverview />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <AdminRevenueChart />
-        <div className="bg-background rounded-xl border border-border p-5">
-          <h3 className="font-semibold text-foreground mb-4">Top Categories</h3>
-          <p className="text-sm text-foreground-muted">Connect your database to see category breakdown.</p>
-        </div>
+        <TopCategoriesChart />
       </div>
     </div>
   );

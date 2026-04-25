@@ -26,6 +26,7 @@ export async function GET() {
     revenueLastMonth,
     recentOrders,
     topProducts,
+    topCategories,
   ] = await Promise.all([
     prisma.order.count(),
     prisma.order.count({ where: { createdAt: { gte: startOfMonth } } }),
@@ -56,6 +57,12 @@ export async function GET() {
       _sum: { quantity: true },
       orderBy: { _sum: { quantity: "desc" } },
       take: 5,
+    }).catch(() => []),
+    prisma.category.findMany({
+      where:   { isActive: true },
+      select:  { id: true, name: true, slug: true, _count: { select: { products: true } } },
+      orderBy: { products: { _count: "desc" } },
+      take:    6,
     }).catch(() => []),
   ]);
 
@@ -99,5 +106,6 @@ export async function GET() {
     },
     recentOrders,
     revenueChart,
+    topCategories,
   });
 }
