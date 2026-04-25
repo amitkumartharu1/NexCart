@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   const categorySlug = searchParams.get("category");
   const brandId = searchParams.get("brand");
   const minPrice = parseFloat(searchParams.get("minPrice") ?? "0");
-  const maxPrice = parseFloat(searchParams.get("maxPrice") ?? "999999");
+  const maxPrice = parseFloat(searchParams.get("maxPrice") ?? "999999999");
   const sort = searchParams.get("sort") ?? "newest";
   const filter = searchParams.get("filter");
 

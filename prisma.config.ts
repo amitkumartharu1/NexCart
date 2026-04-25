@@ -7,9 +7,6 @@ export default defineConfig({
     path: "prisma/migrations",
   },
   datasource: {
-    // Pooled URL for runtime queries (used by PrismaClient via adapter-pg)
-    url: process.env.DATABASE_URL!,
-    // Direct (non-pooled) URL for migrations — required for Neon/PgBouncer
-    ...(process.env.DIRECT_URL ? { directUrl: process.env.DIRECT_URL } : {}),
+    url: process.env.DIRECT_URL || process.env.DATABASE_URL!,
   },
 });

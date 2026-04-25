@@ -20,11 +20,11 @@ function createPrismaClient(): PrismaClient {
   const connectionString = process.env.DATABASE_URL;
 
   if (!connectionString) {
-    console.error(
+    throw new Error(
       "[NexCart] DATABASE_URL is not set. " +
-        "Add it to your .env file before running the app."
+        "Add it to your .env (local) or Vercel Environment Variables (production). " +
+        "See: https://neon.tech/docs/connect/connect-from-vercel"
     );
-    return new PrismaClient({ log: ["error"] });
   }
 
   const adapter = new PrismaPg({ connectionString });

@@ -239,7 +239,7 @@ export function ShopPageClient() {
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedSort, setSelectedSort] = useState("newest");
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 9999]);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 999999999]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -287,7 +287,7 @@ export function ShopPageClient() {
     setSearch("");
     setSelectedCategory("");
     setSelectedSort("newest");
-    setPriceRange([0, 9999]);
+    setPriceRange([0, 999999999]);
     setPage(1);
   }
 
@@ -296,7 +296,7 @@ export function ShopPageClient() {
     selectedCategory !== "" ||
     selectedSort !== "newest" ||
     priceRange[0] !== 0 ||
-    priceRange[1] !== 9999;
+    priceRange[1] !== 999999999;
 
   // ---------------------------------------------------------------------------
   // Sidebar
