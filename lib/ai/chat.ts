@@ -65,8 +65,8 @@ async function resolveKey(envVar: string, dbKey: string): Promise<string | undef
 
 async function callOpenAI(messages: AIMessage[], apiKey: string): Promise<string> {
   const db      = await getDbKeys();
-  const baseUrl = process.env.OPENAI_BASE_URL ?? db["ai_openai_base_url"] || "https://api.openai.com/v1";
-  const model   = process.env.OPENAI_MODEL    ?? db["ai_openai_model"]    || "gpt-3.5-turbo";
+  const baseUrl = (process.env.OPENAI_BASE_URL ?? db["ai_openai_base_url"]) || "https://api.openai.com/v1";
+  const model   = (process.env.OPENAI_MODEL    ?? db["ai_openai_model"])   || "gpt-3.5-turbo";
 
   const res = await fetch(`${baseUrl}/chat/completions`, {
     method:  "POST",
