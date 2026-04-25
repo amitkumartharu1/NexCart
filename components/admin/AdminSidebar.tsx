@@ -76,6 +76,12 @@ const NAV_ITEMS: NavItem[] = [
     roles: ["SUPER_ADMIN", "ADMIN", "MANAGER"],
   },
   {
+    label: "Contact",
+    href: "/admin/contact",
+    icon: MessageSquare,
+    roles: ["SUPER_ADMIN", "ADMIN", "MANAGER"],
+  },
+  {
     label: "Coupons",
     href: "/admin/coupons",
     icon: TicketPercent,
