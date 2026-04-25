@@ -130,7 +130,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         return {
           id:           user.id,
           email:        user.email,
-          name:         user.name ?? `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim() || null,
+          name:         (user.name ?? `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim()) || null,
           image:        user.image,
           role:         user.role,
           emailVerified: user.emailVerified,
