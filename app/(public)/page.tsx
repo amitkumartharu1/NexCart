@@ -9,6 +9,10 @@ import { Testimonials } from "@/components/home/Testimonials";
 import { NewsletterSection } from "@/components/home/NewsletterSection";
 import { RecentlyRestocked } from "@/components/home/RecentlyRestocked";
 import { OfferSection } from "@/components/home/OfferSection";
+import { FounderSection } from "@/components/home/FounderSection";
+import { MotiveSection } from "@/components/home/MotiveSection";
+import { TeamSection } from "@/components/home/TeamSection";
+import { SuppliersSection } from "@/components/home/SuppliersSection";
 
 export const metadata: Metadata = {
   title: "NexCart — Smart Shopping. Modern Services.",
@@ -139,8 +143,72 @@ async function getHeroData(): Promise<{
   }
 }
 
+async function getCmsData() {
+  try {
+    const [settingsRows, teamMembers, suppliers] = await Promise.all([
+      prisma.siteSettings.findMany({
+        where: {
+          key: {
+            in: [
+              "section_founder_enabled", "founder_name", "founder_role",
+              "founder_bio", "founder_vision", "founder_image",
+              "section_motive_enabled", "motive_title", "motive_description", "motive_points",
+              "section_team_enabled", "section_suppliers_enabled",
+            ],
+          },
+        },
+        select: { key: true, value: true },
+      }),
+      prisma.teamMember.findMany({
+        where:   { isActive: true },
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+      }),
+      prisma.supplier.findMany({
+        where:   { isActive: true },
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+      }),
+    ]);
+    const s = Object.fromEntries(settingsRows.map((r) => [r.key, r.value ?? ""]));
+    let motivePoints: string[] = [];
+    try { motivePoints = JSON.parse(s["motive_points"] || "[]"); } catch { /* */ }
+
+    return {
+      founder: {
+        enabled: s["section_founder_enabled"] !== "false",
+        name:    s["founder_name"]    || "",
+        role:    s["founder_role"]    || "",
+        bio:     s["founder_bio"]     || "",
+        vision:  s["founder_vision"]  || "",
+        image:   s["founder_image"]   || "",
+      },
+      motive: {
+        enabled:     s["section_motive_enabled"] !== "false",
+        title:       s["motive_title"]       || "",
+        description: s["motive_description"] || "",
+        points:      motivePoints,
+      },
+      teamEnabled:      s["section_team_enabled"]      !== "false",
+      suppliersEnabled: s["section_suppliers_enabled"] !== "false",
+      teamMembers,
+      suppliers,
+    };
+  } catch {
+    return {
+      founder:          { enabled: false, name: "", role: "", bio: "", vision: "", image: "" },
+      motive:           { enabled: false, title: "", description: "", points: [] },
+      teamEnabled:      false,
+      suppliersEnabled: false,
+      teamMembers:      [],
+      suppliers:        [],
+    };
+  }
+}
+
 export default async function HomePage() {
-  const { banner, settings, bgImage, overlayOpacity, featuredProduct } = await getHeroData();
+  const [
+    { banner, settings, bgImage, overlayOpacity, featuredProduct },
+    cms,
+  ] = await Promise.all([getHeroData(), getCmsData()]);
 
   return (
     <div className="flex flex-col">
@@ -151,12 +219,35 @@ export default async function HomePage() {
         overlayOpacity={overlayOpacity}
         featuredProduct={featuredProduct}
       />
+
+      {/* Founder spotlight — right after hero if set */}
+      {cms.founder.enabled && cms.founder.name && (
+        <FounderSection data={cms.founder} />
+      )}
+
       <FeaturedCategories />
       <RecentlyRestocked />
       <OfferSection />
       <TrendingProducts />
+
+      {/* Website motive section */}
+      {cms.motive.enabled && (
+        <MotiveSection data={cms.motive} />
+      )}
+
       <FeaturedServices />
       <WhyNexCart />
+
+      {/* Team section */}
+      {cms.teamEnabled && cms.teamMembers.length > 0 && (
+        <TeamSection members={cms.teamMembers} />
+      )}
+
+      {/* Suppliers carousel */}
+      {cms.suppliersEnabled && cms.suppliers.length > 0 && (
+        <SuppliersSection suppliers={cms.suppliers} />
+      )}
+
       <Testimonials />
       <NewsletterSection />
     </div>

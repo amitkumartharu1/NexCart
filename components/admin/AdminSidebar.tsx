@@ -6,7 +6,8 @@ import {
   LayoutDashboard, Package, ShoppingCart, Users, Settings,
   Tag, Layers, Star, TicketPercent, FileText, Image,
   Wrench, BarChart3, Shield, ChevronDown, ChevronRight,
-  RefreshCw, BookOpen, MessageSquare, Globe, Quote
+  RefreshCw, BookOpen, MessageSquare, Globe, Quote,
+  Phone, Building2, Home,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -84,7 +85,7 @@ const NAV_ITEMS: NavItem[] = [
   {
     label: "Contact",
     href: "/admin/contact",
-    icon: MessageSquare,
+    icon: Phone,
     roles: ["SUPER_ADMIN", "ADMIN", "MANAGER"],
   },
   {
@@ -92,6 +93,16 @@ const NAV_ITEMS: NavItem[] = [
     href: "/admin/coupons",
     icon: TicketPercent,
     roles: ["SUPER_ADMIN", "ADMIN", "MANAGER"],
+  },
+  {
+    label: "Homepage",
+    icon: Home,
+    roles: ["SUPER_ADMIN", "ADMIN", "MANAGER"],
+    children: [
+      { label: "Sections",  href: "/admin/homepage",   roles: ["SUPER_ADMIN", "ADMIN", "MANAGER"] },
+      { label: "Team",      href: "/admin/team",       roles: ["SUPER_ADMIN", "ADMIN", "MANAGER"] },
+      { label: "Suppliers", href: "/admin/suppliers",  roles: ["SUPER_ADMIN", "ADMIN", "MANAGER"] },
+    ],
   },
   {
     label: "Content",

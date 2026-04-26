@@ -861,6 +861,44 @@ model Testimonial {
   @@map("testimonials")
 }
 
+model TeamMember {
+  id          String   @id @default(cuid())
+  name        String
+  role        String
+  bio         String?
+  image       String?
+  email       String?
+  linkedin    String?
+  twitter     String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  isFeatured  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([sortOrder])
+  @@map("team_members")
+}
+
+model Supplier {
+  id          String   @id @default(cuid())
+  name        String
+  logo        String?
+  description String?
+  website     String?
+  country     String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  isFeatured  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([sortOrder])
+  @@map("suppliers")
+}
+
 model FAQ {
   id         String   @id @default(cuid())
   question   String
