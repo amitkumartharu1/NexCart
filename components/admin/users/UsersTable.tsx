@@ -8,10 +8,13 @@ import {
   Users,
   ShieldCheck,
   ShieldOff,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/lib/utils/format";
 import { toast } from "sonner";
+import { useSession } from "next-auth/react";
 
 type UserRole =
   | "SUPER_ADMIN"
@@ -67,6 +70,7 @@ const USER_ROLES: UserRole[] = [
 const LIMIT = 20;
 
 export function AdminUsersTable() {
+  const { data: session } = useSession();
   const [users, setUsers] = useState<User[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,
@@ -79,6 +83,10 @@ export function AdminUsersTable() {
   const [roleFilter, setRoleFilter] = useState<string>("");
   const [page, setPage] = useState(1);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  // Delete modal state
+  const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -156,6 +164,27 @@ export function AdminUsersTable() {
       toast.error(`Failed to ${label} user`);
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: deleteTarget.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Delete failed");
+      toast.success(`${deleteTarget.name ?? deleteTarget.email ?? "User"} has been deleted`);
+      setDeleteTarget(null);
+      await fetchUsers();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete user");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -360,33 +389,37 @@ export function AdminUsersTable() {
                     {/* Actions */}
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
+                        {/* Suspend / Activate */}
                         <button
                           onClick={() => handleStatusToggle(user)}
                           disabled={actionLoading === user.id}
-                          title={
-                            user.status === "ACTIVE"
-                              ? "Suspend user"
-                              : "Activate user"
-                          }
+                          title={user.status === "ACTIVE" ? "Suspend user" : "Activate user"}
                           className={cn(
                             "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors disabled:opacity-50",
                             user.status === "ACTIVE"
-                              ? "text-foreground-muted hover:text-red-500 hover:bg-red-500/10"
+                              ? "text-foreground-muted hover:text-amber-500 hover:bg-amber-500/10"
                               : "text-foreground-muted hover:text-emerald-500 hover:bg-emerald-500/10"
                           )}
                         >
                           {user.status === "ACTIVE" ? (
-                            <>
-                              <ShieldOff size={13} />
-                              <span>Suspend</span>
-                            </>
+                            <><ShieldOff size={13} /><span>Suspend</span></>
                           ) : (
-                            <>
-                              <ShieldCheck size={13} />
-                              <span>Activate</span>
-                            </>
+                            <><ShieldCheck size={13} /><span>Activate</span></>
                           )}
                         </button>
+
+                        {/* Delete — hidden for SUPER_ADMIN targets and self */}
+                        {user.role !== "SUPER_ADMIN" && user.id !== session?.user?.id && (
+                          <button
+                            onClick={() => setDeleteTarget(user)}
+                            disabled={actionLoading === user.id}
+                            title="Delete user"
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium text-foreground-muted hover:text-red-500 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                          >
+                            <Trash2 size={13} />
+                            <span>Delete</span>
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -432,6 +465,68 @@ export function AdminUsersTable() {
           </div>
         )}
       </div>
+
+      {/* ── Delete Confirmation Modal ── */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-background rounded-2xl border border-border shadow-xl w-full max-w-sm p-6 space-y-5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center shrink-0">
+                <AlertTriangle size={20} className="text-destructive" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground">Delete User</h3>
+                <p className="text-xs text-foreground-muted mt-0.5">This action cannot be undone.</p>
+              </div>
+            </div>
+
+            <div className="rounded-lg bg-background-subtle border border-border p-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-xs font-bold text-primary">
+                  {getInitials(deleteTarget.name, deleteTarget.email)}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">
+                    {deleteTarget.name ?? "—"}
+                  </p>
+                  <p className="text-xs text-foreground-muted truncate">
+                    {deleteTarget.email ?? "—"}
+                  </p>
+                </div>
+                <span className={cn(
+                  "ml-auto text-xs font-semibold px-2 py-0.5 rounded-full shrink-0",
+                  ROLE_STYLES[deleteTarget.role]
+                )}>
+                  {ROLE_LABELS[deleteTarget.role]}
+                </span>
+              </div>
+            </div>
+
+            <p className="text-sm text-foreground-muted">
+              Permanently deletes this account and all associated data — reviews,
+              addresses, wishlist, and cart. Orders will be anonymised and kept for records.
+            </p>
+
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+                className="flex-1 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-background-subtle transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg bg-destructive text-destructive-foreground text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                <Trash2 size={13} />
+                {deleting ? "Deleting…" : "Delete User"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -55,3 +55,46 @@ export async function PATCH(req: NextRequest) {
   });
   return NextResponse.json({ user });
 }
+
+export async function DELETE(req: NextRequest) {
+  const session = await auth();
+  if (!session?.user || !["SUPER_ADMIN", "ADMIN"].includes(session.user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const { userId } = await req.json().catch(() => ({}));
+  if (!userId) return NextResponse.json({ error: "Missing userId" }, { status: 400 });
+
+  // Cannot delete yourself
+  if (userId === session.user.id) {
+    return NextResponse.json({ error: "You cannot delete your own account." }, { status: 400 });
+  }
+
+  // Fetch target user to check role
+  const target = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true, name: true, email: true },
+  });
+
+  if (!target) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+  // Only SUPER_ADMIN can delete other SUPER_ADMINs or ADMINs
+  if (
+    target.role === "SUPER_ADMIN" ||
+    (target.role === "ADMIN" && session.user.role !== "SUPER_ADMIN")
+  ) {
+    return NextResponse.json(
+      { error: "You do not have permission to delete this user." },
+      { status: 403 }
+    );
+  }
+
+  try {
+    // All related records cascade-delete via Prisma onDelete: Cascade
+    await prisma.user.delete({ where: { id: userId } });
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("[DELETE /api/admin/users]", err);
+    return NextResponse.json({ error: "Failed to delete user." }, { status: 500 });
+  }
+}
