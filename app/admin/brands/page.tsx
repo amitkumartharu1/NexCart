@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Layers } from "lucide-react";
+import { ImageUpload } from "@/components/admin/ImageUpload";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -238,19 +239,14 @@ export default function AdminBrandsPage() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1.5">
-                  Logo URL
-                </label>
-                <input
-                  name="logo"
-                  value={form.logo}
-                  onChange={handleChange}
-                  type="url"
-                  placeholder="https://..."
-                  className={inputClass}
-                />
-              </div>
+              <ImageUpload
+                label="Logo"
+                value={form.logo}
+                onChange={(url) => setForm((p) => ({ ...p, logo: url }))}
+                folder="nexcart/brands"
+                aspect="square"
+                hint="Upload a logo or paste a URL"
+              />
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1.5">
                   Website URL

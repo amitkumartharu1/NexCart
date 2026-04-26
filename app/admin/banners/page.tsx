@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, ToggleLeft, ToggleRight, ImageIcon, Upload, X, Pencil, ExternalLink } from "lucide-react";
+import { Plus, Trash2, ToggleLeft, ToggleRight, X, Pencil, ExternalLink, ImageIcon } from "lucide-react";
+import { ImageUpload } from "@/components/admin/ImageUpload";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -41,8 +42,6 @@ export default function AdminBannersPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchBanners = useCallback(async () => {
     setLoading(true);
@@ -76,22 +75,6 @@ export default function AdminBannersPage() {
     setShowForm(true);
   }
 
-  async function handleImageUpload(file: File) {
-    setUploading(true);
-    const fd = new FormData();
-    fd.append("file", file);
-    try {
-      const res = await fetch("/api/admin/upload", { method: "POST", body: fd });
-      if (!res.ok) { toast.error("Image upload failed"); return; }
-      const data = await res.json();
-      setForm((f) => ({ ...f, image: data.url }));
-      toast.success("Image uploaded");
-    } catch {
-      toast.error("Image upload failed");
-    } finally {
-      setUploading(false);
-    }
-  }
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -208,56 +191,14 @@ export default function AdminBannersPage() {
 
               {/* Image upload */}
               <div className="sm:col-span-2">
-                <label className="block text-xs font-medium text-foreground mb-1">Banner Image</label>
-                <div className="flex gap-3 items-start">
-                  {form.image ? (
-                    <div className="relative w-32 h-20 rounded-lg overflow-hidden border border-border shrink-0">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={form.image} alt="Banner preview" className="object-cover w-full h-full" />
-                      <button
-                        type="button"
-                        onClick={() => setForm({ ...form, image: "" })}
-                        className="absolute top-1 right-1 w-5 h-5 rounded-full bg-background/80 flex items-center justify-center text-foreground hover:bg-destructive hover:text-white transition-colors"
-                      >
-                        <X size={10} />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="w-32 h-20 rounded-lg border-2 border-dashed border-border flex items-center justify-center text-foreground-muted shrink-0">
-                      <ImageIcon size={20} />
-                    </div>
-                  )}
-                  <div className="flex-1 space-y-2">
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/jpeg,image/jpg,image/png,image/webp"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleImageUpload(file);
-                        e.target.value = "";
-                      }}
-                    />
-                    <button
-                      type="button"
-                      disabled={uploading}
-                      onClick={() => fileInputRef.current?.click()}
-                      className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm text-foreground hover:border-border-strong transition-colors disabled:opacity-50"
-                    >
-                      <Upload size={13} />
-                      {uploading ? "Uploading…" : "Upload Image"}
-                    </button>
-                    <p className="text-xs text-foreground-muted">Or paste a URL below</p>
-                    <input
-                      type="url"
-                      value={form.image}
-                      onChange={(e) => setForm({ ...form, image: e.target.value })}
-                      placeholder="https://... or /uploads/..."
-                      className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring/30"
-                    />
-                  </div>
-                </div>
+                <ImageUpload
+                  label="Banner Image"
+                  value={form.image}
+                  onChange={(url) => setForm((f) => ({ ...f, image: url }))}
+                  folder="nexcart/banners"
+                  aspect="landscape"
+                  hint="Recommended: 1600×600 px. JPEG, PNG or WebP."
+                />
               </div>
 
               <div>

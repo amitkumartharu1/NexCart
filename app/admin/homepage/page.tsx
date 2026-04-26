@@ -6,6 +6,7 @@ import {
   Save, LayoutDashboard, User, Target, Users, Building2,
   Eye, EyeOff, Plus, Trash2,
 } from "lucide-react";
+import { ImageUpload } from "@/components/admin/ImageUpload";
 import { toast } from "sonner";
 
 // ─── Settings type ────────────────────────────────────────────────────────────
@@ -200,10 +201,14 @@ export default function AdminHomepagePage() {
                   placeholder="Founder & CEO" className={inputCls} />
               </Field>
             </div>
-            <Field label="Photo URL" hint="Use a professional headshot. Square or portrait works best.">
-              <input value={s.founder_image} onChange={(e) => set("founder_image", e.target.value)}
-                placeholder="https://example.com/photo.jpg" className={inputCls} />
-            </Field>
+            <ImageUpload
+              label="Photo"
+              value={s.founder_image}
+              onChange={(url) => set("founder_image", url)}
+              folder="nexcart/founder"
+              aspect="portrait"
+              hint="Use a professional headshot. Square or portrait works best."
+            />
             <Field label="Short Bio" hint="Shown below the name on the homepage card">
               <textarea value={s.founder_bio} onChange={(e) => set("founder_bio", e.target.value)}
                 rows={3} placeholder="Brief background and passion…" className={inputCls + " resize-none"} />

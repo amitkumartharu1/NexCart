@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { ImageUpload } from "@/components/admin/ImageUpload";
 import {
   Star, Plus, Pencil, Trash2, Eye, EyeOff, BadgeCheck,
   Search, RefreshCw, X, Check, Quote, Sparkles,
@@ -247,13 +248,12 @@ function TestimonialModal({
               />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-foreground-muted uppercase tracking-wide">Avatar URL (optional)</label>
-              <input
-                type="url"
-                value={form.avatar}
-                onChange={(e) => set("avatar", e.target.value)}
-                placeholder="https://…"
-                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20"
+              <ImageUpload
+                label="Avatar (optional)"
+                value={form.avatar ?? ""}
+                onChange={(url) => set("avatar", url)}
+                folder="nexcart/testimonials"
+                aspect="square"
               />
             </div>
           </div>

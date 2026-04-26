@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { ImageUpload } from "@/components/admin/ImageUpload";
 
 interface Supplier {
   id: string;
@@ -249,9 +250,14 @@ export default function AdminSuppliersPage() {
             <Field label="Name *">
               <input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="e.g. Samsung" className={inputCls} />
             </Field>
-            <Field label="Logo URL" hint="URL to supplier logo image">
-              <input value={form.logo} onChange={(e) => set("logo", e.target.value)} placeholder="https://..." className={inputCls} />
-            </Field>
+            <ImageUpload
+              label="Logo"
+              value={form.logo}
+              onChange={(url) => set("logo", url)}
+              folder="nexcart/suppliers"
+              aspect="square"
+              hint="Upload a logo or paste a URL"
+            />
             <Field label="Description">
               <textarea value={form.description} onChange={(e) => set("description", e.target.value)}
                 rows={2} placeholder="Brief description…" className={inputCls + " resize-none"} />

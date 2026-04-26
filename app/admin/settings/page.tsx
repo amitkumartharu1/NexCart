@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
+import { ImageUpload } from "@/components/admin/ImageUpload";
 import { useRouter } from "next/navigation";
 import {
   Save,
   Globe,
   Link2,
   QrCode,
-  Upload,
   Eye,
   EyeOff,
   DollarSign,
@@ -200,10 +200,7 @@ export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [qrPreview, setQrPreview] = useState<string>("");
-  const [uploadingQr, setUploadingQr] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
   const [khaltiQrPreview, setKhaltiQrPreview] = useState<string>("");
-  const khaltiFileRef = useRef<HTMLInputElement>(null);
   const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
 
   function toggleKeyVisibility(field: string) {
@@ -243,34 +240,6 @@ export default function AdminSettingsPage() {
     }));
   }
 
-  async function handleKhaltiQrUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const url = ev.target?.result as string;
-      setKhaltiQrPreview(url);
-      set("khalti_qr_image_url", url);
-    };
-    reader.readAsDataURL(file);
-    toast.info("Khalti QR image selected. Save settings to persist.");
-  }
-
-  async function handleQrUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploadingQr(true);
-    // Show local preview immediately
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const url = ev.target?.result as string;
-      setQrPreview(url);
-      set("qr_payment_image_url", url); // store as data URL until proper upload is wired
-      setUploadingQr(false);
-    };
-    reader.readAsDataURL(file);
-    toast.info("QR image selected. Save settings to persist.");
-  }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -334,24 +303,16 @@ export default function AdminSettingsPage() {
             <Megaphone size={16} className="text-primary" />
             <h2 className="font-semibold text-foreground">Hero Background</h2>
           </div>
-          <p className="text-xs text-foreground-muted mt-1">Paste an image URL (or upload via Cloudinary) to replace the default hero background. Leave blank to use the default laptop photo.</p>
+          <p className="text-xs text-foreground-muted mt-1">Upload or paste an image URL to replace the default hero background. Leave blank to use the default laptop photo.</p>
 
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-1.5">Background Image URL</label>
-            <input
-              type="url"
-              value={settings.hero_bg_image}
-              onChange={(e) => set("hero_bg_image", e.target.value)}
-              placeholder="https://example.com/your-hero-image.jpg"
-              className="w-full px-3 py-2 rounded-lg border border-border bg-background-subtle text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
-            {settings.hero_bg_image && (
-              <div className="mt-2 rounded-lg overflow-hidden border border-border h-24 relative">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={settings.hero_bg_image} alt="Preview" className="w-full h-full object-cover" />
-              </div>
-            )}
-          </div>
+          <ImageUpload
+            label="Background Image"
+            value={settings.hero_bg_image}
+            onChange={(url) => set("hero_bg_image", url)}
+            folder="nexcart/hero"
+            aspect="landscape"
+            hint="Recommended: 1920×1080 px or wider. Landscape orientation."
+          />
 
           <div>
             <label className="block text-sm font-medium text-foreground mb-1.5">
@@ -655,54 +616,14 @@ export default function AdminSettingsPage() {
                 />
               </Field>
 
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  QR Code Image
-                </label>
-                <div className="flex items-start gap-4">
-                  {qrPreview ? (
-                    <div className="relative">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={qrPreview}
-                        alt="QR Code preview"
-                        className="w-32 h-32 object-contain rounded-lg border border-border"
-                      />
-                    </div>
-                  ) : (
-                    <div className="w-32 h-32 rounded-lg border-2 border-dashed border-border flex items-center justify-center text-foreground-muted">
-                      <QrCode size={32} />
-                    </div>
-                  )}
-                  <div className="flex flex-col gap-2">
-                    <button
-                      type="button"
-                      onClick={() => fileRef.current?.click()}
-                      className="flex items-center gap-2 px-4 py-2 text-sm border border-border rounded-lg hover:bg-muted transition-colors"
-                    >
-                      <Upload size={14} />
-                      {qrPreview ? "Change QR" : "Upload QR"}
-                    </button>
-                    {qrPreview && (
-                      <button
-                        type="button"
-                        onClick={() => { setQrPreview(""); set("qr_payment_image_url", ""); }}
-                        className="flex items-center gap-2 px-4 py-2 text-sm text-destructive border border-destructive/30 rounded-lg hover:bg-destructive/10 transition-colors"
-                      >
-                        Remove
-                      </button>
-                    )}
-                    <p className="text-xs text-foreground-muted">PNG or JPG, max 2 MB</p>
-                    <input
-                      ref={fileRef}
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp"
-                      className="hidden"
-                      onChange={handleQrUpload}
-                    />
-                  </div>
-                </div>
-              </div>
+              <ImageUpload
+                label="QR Code Image"
+                value={settings.qr_payment_image_url}
+                onChange={(url) => { set("qr_payment_image_url", url); setQrPreview(url); }}
+                folder="nexcart/payments"
+                aspect="square"
+                hint="PNG or JPG. Square format recommended."
+              />
             </>
           )}
         </section>
@@ -733,54 +654,14 @@ export default function AdminSettingsPage() {
             />
           </Field>
 
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              Khalti QR Code Image
-            </label>
-            <div className="flex items-start gap-4">
-              {khaltiQrPreview ? (
-                <div className="relative">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={khaltiQrPreview}
-                    alt="Khalti QR Code preview"
-                    className="w-32 h-32 object-contain rounded-lg border border-border"
-                  />
-                </div>
-              ) : (
-                <div className="w-32 h-32 rounded-lg border-2 border-dashed border-purple-300 dark:border-purple-800 flex items-center justify-center text-purple-400">
-                  <QrCode size={32} />
-                </div>
-              )}
-              <div className="flex flex-col gap-2">
-                <button
-                  type="button"
-                  onClick={() => khaltiFileRef.current?.click()}
-                  className="flex items-center gap-2 px-4 py-2 text-sm border border-border rounded-lg hover:bg-muted transition-colors"
-                >
-                  <Upload size={14} />
-                  {khaltiQrPreview ? "Change QR" : "Upload QR"}
-                </button>
-                {khaltiQrPreview && (
-                  <button
-                    type="button"
-                    onClick={() => { setKhaltiQrPreview(""); set("khalti_qr_image_url", ""); }}
-                    className="flex items-center gap-2 px-4 py-2 text-sm text-destructive border border-destructive/30 rounded-lg hover:bg-destructive/10 transition-colors"
-                  >
-                    Remove
-                  </button>
-                )}
-                <p className="text-xs text-foreground-muted">PNG or JPG, max 2 MB</p>
-                <input
-                  ref={khaltiFileRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  className="hidden"
-                  onChange={handleKhaltiQrUpload}
-                />
-              </div>
-            </div>
-          </div>
+          <ImageUpload
+            label="Khalti QR Code Image"
+            value={settings.khalti_qr_image_url}
+            onChange={(url) => { set("khalti_qr_image_url", url); setKhaltiQrPreview(url); }}
+            folder="nexcart/payments"
+            aspect="square"
+            hint="PNG or JPG. Square format recommended."
+          />
         </section>
 
         {/* ── Warranty & Returns ── */}

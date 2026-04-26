@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Tag } from "lucide-react";
+import { ImageUpload } from "@/components/admin/ImageUpload";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -230,19 +231,14 @@ export default function AdminCategoriesPage() {
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">
-                Image URL
-              </label>
-              <input
-                name="image"
-                value={form.image}
-                onChange={handleChange}
-                type="url"
-                placeholder="https://..."
-                className={inputClass}
-              />
-            </div>
+            <ImageUpload
+              label="Category Image"
+              value={form.image}
+              onChange={(url) => setForm((p) => ({ ...p, image: url }))}
+              folder="nexcart/categories"
+              aspect="landscape"
+              hint="Banner image shown on the category page"
+            />
 
             <label className="flex items-center gap-2.5 cursor-pointer">
               <input

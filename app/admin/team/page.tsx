@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { ImageUpload } from "@/components/admin/ImageUpload";
 
 interface TeamMember {
   id: string;
@@ -332,9 +333,14 @@ export default function AdminTeamPage() {
                 placeholder="Brief introduction..." rows={3}
                 className={inputCls + " resize-none"} />
             </Field>
-            <Field label="Photo URL" hint="Paste image URL or leave empty for initials avatar">
-              <input value={form.image} onChange={(e) => set("image", e.target.value)} placeholder="https://..." className={inputCls} />
-            </Field>
+            <ImageUpload
+              label="Photo"
+              value={form.image}
+              onChange={(url) => set("image", url)}
+              folder="nexcart/team"
+              aspect="portrait"
+              hint="Upload a photo or leave empty for initials avatar"
+            />
             <div className="grid grid-cols-2 gap-3">
               <Field label="Email">
                 <input type="email" value={form.email} onChange={(e) => set("email", e.target.value)} placeholder="email@..." className={inputCls} />
