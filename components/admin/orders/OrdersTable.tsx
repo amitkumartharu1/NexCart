@@ -15,12 +15,18 @@ import { toast } from "sonner";
 
 type OrderStatus =
   | "PENDING"
+  | "PAYMENT_VERIFICATION"
   | "CONFIRMED"
   | "PROCESSING"
   | "SHIPPED"
+  | "OUT_FOR_DELIVERY"
   | "DELIVERED"
   | "CANCELLED"
-  | "REFUNDED";
+  | "FAILED"
+  | "REFUNDED"
+  | "PARTIALLY_REFUNDED"
+  | "RETURN_REQUESTED"
+  | "RETURNED";
 
 interface Order {
   id: string;
@@ -46,23 +52,35 @@ interface Pagination {
 }
 
 const STATUS_STYLES: Record<OrderStatus, string> = {
-  PENDING: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
-  CONFIRMED: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
-  PROCESSING: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
-  SHIPPED: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
-  DELIVERED: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-  CANCELLED: "bg-red-500/10 text-red-600 dark:text-red-400",
-  REFUNDED: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
+  PENDING:              "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400",
+  PAYMENT_VERIFICATION: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+  CONFIRMED:            "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+  PROCESSING:           "bg-purple-500/10 text-purple-600 dark:text-purple-400",
+  SHIPPED:              "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400",
+  OUT_FOR_DELIVERY:     "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400",
+  DELIVERED:            "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+  CANCELLED:            "bg-red-500/10 text-red-600 dark:text-red-400",
+  FAILED:               "bg-red-600/10 text-red-700 dark:text-red-400",
+  REFUNDED:             "bg-orange-500/10 text-orange-600 dark:text-orange-400",
+  PARTIALLY_REFUNDED:   "bg-orange-400/10 text-orange-500 dark:text-orange-300",
+  RETURN_REQUESTED:     "bg-pink-500/10 text-pink-600 dark:text-pink-400",
+  RETURNED:             "bg-gray-500/10 text-gray-600 dark:text-gray-400",
 };
 
 const ORDER_STATUSES: OrderStatus[] = [
   "PENDING",
+  "PAYMENT_VERIFICATION",
   "CONFIRMED",
   "PROCESSING",
   "SHIPPED",
+  "OUT_FOR_DELIVERY",
   "DELIVERED",
   "CANCELLED",
+  "FAILED",
   "REFUNDED",
+  "PARTIALLY_REFUNDED",
+  "RETURN_REQUESTED",
+  "RETURNED",
 ];
 
 const LIMIT = 20;

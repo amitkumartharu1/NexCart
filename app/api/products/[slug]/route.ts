@@ -50,13 +50,27 @@ export async function GET(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
+    // Compute rating and reviewCount from approved reviews
+    const approvedReviews = product.reviews.filter((r) => r.isApproved);
+    const reviewCount = approvedReviews.length;
+    const rating =
+      reviewCount > 0
+        ? approvedReviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount
+        : null;
+
     // Increment view count fire-and-forget
     prisma.product.update({
       where: { id: product.id },
       data: { viewCount: { increment: 1 } },
     }).catch(() => {});
 
-    return NextResponse.json({ product });
+    return NextResponse.json({
+      product: {
+        ...product,
+        rating: rating !== null ? Math.round(rating * 10) / 10 : null,
+        reviewCount,
+      },
+    });
   } catch (err) {
     console.error("[/api/products/[slug]] Prisma error:", err);
     return NextResponse.json({ error: "Failed to fetch product" }, { status: 500 });

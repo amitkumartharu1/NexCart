@@ -10,12 +10,25 @@ export function NewsletterSection() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!email) return;
+    if (!email.trim()) return;
     setLoading(true);
-    // TODO (Phase 10): wire to email service
-    await new Promise((r) => setTimeout(r, 600));
-    setSubmitted(true);
-    setLoading(false);
+    try {
+      const res = await fetch("/api/newsletter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error((data as { error?: string }).error ?? "Subscription failed");
+      }
+      setSubmitted(true);
+    } catch (err) {
+      // Show inline error without crashing
+      alert(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
