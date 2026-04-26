@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db/prisma";
 import { verifyPassword } from "@/lib/security/password";
+import { rateLimit } from "@/lib/security/rate-limit";
 import { z } from "zod";
 
 const Schema = z.object({
@@ -23,6 +24,12 @@ export async function DELETE(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Rate-limit: max 5 attempts per user per hour (prevent timing attacks on password)
+  const rl = await rateLimit("delete_account", session.user.id, { max: 5, windowSecs: 3600 }).catch(() => ({ success: true }));
+  if (!rl.success) {
+    return NextResponse.json({ error: "Too many attempts. Please try again later." }, { status: 429 });
   }
 
   let body: unknown;

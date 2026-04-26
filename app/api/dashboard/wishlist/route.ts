@@ -26,7 +26,17 @@ export async function GET() {
     },
   });
 
-  return NextResponse.json({ items: wishlist?.items ?? [] });
+  // Normalise basePrice → price so frontend components work correctly
+  const items = (wishlist?.items ?? []).map((item) => ({
+    ...item,
+    product: {
+      ...item.product,
+      price:        Number(item.product.basePrice),
+      comparePrice: item.product.comparePrice != null ? Number(item.product.comparePrice) : null,
+    },
+  }));
+
+  return NextResponse.json({ items });
 }
 
 export async function POST(req: Request) {

@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { z } from "zod";
 import crypto from "crypto";
+import { rateLimit } from "@/lib/security/rate-limit";
 
 const Schema = z.object({
   email: z.string().email(),
@@ -19,6 +20,16 @@ function hashOtp(otp: string): string {
 }
 
 export async function POST(req: NextRequest) {
+  // Rate-limit OTP attempts: max 10 per IP per 15 minutes (prevent brute-force of 6-digit codes)
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const rl = await rateLimit("otp_verify", ip, { max: 10, windowSecs: 900 }).catch(() => ({ success: true }));
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: "Too many OTP attempts. Please request a new code." },
+      { status: 429 }
+    );
+  }
+
   let body: unknown;
   try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
 

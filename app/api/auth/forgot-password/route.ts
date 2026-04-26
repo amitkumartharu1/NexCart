@@ -10,6 +10,7 @@ import { prisma } from "@/lib/db/prisma";
 import { z } from "zod";
 import crypto from "crypto";
 import { sendMail, otpEmailHtml } from "@/lib/email/smtp";
+import { rateLimit, RATE_LIMITS } from "@/lib/security/rate-limit";
 
 const Schema = z.object({
   email: z.string().email(),
@@ -25,6 +26,16 @@ function hashOtp(otp: string): string {
 }
 
 export async function POST(req: NextRequest) {
+  // Rate-limit: max 3 OTP requests per IP per 5 minutes
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const rl = await rateLimit("otp_request", ip, RATE_LIMITS.forgotPassword).catch(() => ({ success: true }));
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: "Too many requests. Please wait a few minutes before trying again." },
+      { status: 429 }
+    );
+  }
+
   let body: unknown;
   try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
 

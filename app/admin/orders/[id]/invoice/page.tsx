@@ -27,10 +27,9 @@ interface Order {
   status: string;
   createdAt: string;
   subtotal: number;
-  shippingFee: number;
+  shippingAmount: number;   // schema field name (NOT shippingFee)
   discountAmount: number;
   total: number;
-  paymentMethod: string | null;
   notes: string | null;
   user: { name: string; email: string; phone: string | null } | null;
   items: OrderItem[];
@@ -44,6 +43,7 @@ interface Order {
     country: string;
     phone: string | null;
   } | null;
+  // paymentMethod lives on the Payment record, not Order
   payments: { method: string; status: string; amount: number; createdAt: string }[];
 }
 
@@ -181,11 +181,18 @@ export default function InvoicePage() {
           )}
         </div>
 
-        {/* Payment info */}
-        {order.paymentMethod && (
+        {/* Payment info — method comes from Payment records, not Order */}
+        {order.payments[0]?.method && (
           <div className="mb-6 flex items-center gap-4 text-sm text-gray-600">
             <span className="font-medium">Payment Method:</span>
-            <span className="capitalize">{order.paymentMethod.replace(/_/g, " ")}</span>
+            <span className="capitalize">{order.payments[0].method.replace(/_/g, " ")}</span>
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+              order.payments[0].status === "PAID" ? "bg-green-100 text-green-700" :
+              order.payments[0].status === "PENDING" ? "bg-yellow-100 text-yellow-700" :
+              "bg-gray-100 text-gray-600"
+            }`}>
+              {order.payments[0].status}
+            </span>
           </div>
         )}
 
@@ -240,10 +247,10 @@ export default function InvoicePage() {
               <span>Subtotal</span>
               <span>{formatCurrency(order.subtotal)}</span>
             </div>
-            {Number(order.shippingFee) > 0 && (
+            {Number(order.shippingAmount) > 0 && (
               <div className="flex justify-between text-sm text-gray-600">
                 <span>Shipping</span>
-                <span>{formatCurrency(order.shippingFee)}</span>
+                <span>{formatCurrency(order.shippingAmount)}</span>
               </div>
             )}
             {Number(order.discountAmount) > 0 && (

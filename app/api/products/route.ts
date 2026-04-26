@@ -59,8 +59,16 @@ export async function GET(req: NextRequest) {
       prisma.product.count({ where }),
     ]);
 
+    // Normalise: schema stores `basePrice` but every frontend component expects `price`.
+    // Map here once so all consumers (search, shop, wishlist, cart) work without changes.
+    const normalised = products.map(({ basePrice, comparePrice, ...rest }) => ({
+      ...rest,
+      price:        Number(basePrice),
+      comparePrice: comparePrice != null ? Number(comparePrice) : null,
+    }));
+
     return NextResponse.json({
-      products,
+      products: normalised,
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     });
   } catch (err) {

@@ -20,13 +20,15 @@ const nextConfig: NextConfig = {
   // Prevent these Node.js-only packages from being bundled into
   // Server Components or the Edge runtime by Turbopack/webpack.
   serverExternalPackages: [
-    "argon2",      // optional — falls back to bcryptjs if native build unavailable
+    "argon2",         // optional — falls back to bcryptjs if native build unavailable
     "bcryptjs",
     "@prisma/client",
     "@prisma/adapter-pg",
     "prisma",
     "pg",
     "pg-native",
+    "nodemailer",     // Node.js only — email sending
+    "exceljs",        // Node.js only — Excel export
   ],
 
   // Suppress the NODE_ENV warning — Vercel sets this correctly at runtime
@@ -36,18 +38,41 @@ const nextConfig: NextConfig = {
 
   // Security headers on every response
   async headers() {
-    return [
-      {
-        source: "/(.*)",
-        headers: [
-          { key: "X-Content-Type-Options", value: "nosniff" },
-          { key: "X-Frame-Options", value: "DENY" },
-          { key: "X-XSS-Protection", value: "1; mode=block" },
-          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
-        ],
-      },
+    const isDev = process.env.NODE_ENV === "development";
+
+    // Content-Security-Policy
+    // style-src needs 'unsafe-inline' — Tailwind v4 injects <style> blocks at runtime
+    // script-src 'unsafe-eval' needed in dev for Next.js HMR; locked down in prod
+    const cspDirectives = [
+      "default-src 'self'",
+      isDev
+        ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
+        : "script-src 'self' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob: https://res.cloudinary.com https://lh3.googleusercontent.com https://avatars.githubusercontent.com https://picsum.photos https://fastly.picsum.photos https://images.unsplash.com https://*.cloudinary.com",
+      "font-src 'self' data:",
+      "connect-src 'self' https://api.cloudinary.com https://accounts.google.com",
+      "frame-src 'none'",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "upgrade-insecure-requests",
     ];
+
+    const securityHeaders = [
+      { key: "X-Content-Type-Options",  value: "nosniff" },
+      { key: "X-Frame-Options",          value: "DENY" },
+      { key: "X-XSS-Protection",         value: "1; mode=block" },
+      { key: "Referrer-Policy",           value: "strict-origin-when-cross-origin" },
+      { key: "Permissions-Policy",        value: "camera=(), microphone=(), geolocation=(), payment=()" },
+      { key: "Content-Security-Policy",   value: cspDirectives.join("; ") },
+      // HSTS — enforce HTTPS for 1 year; only in production
+      ...(!isDev
+        ? [{ key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains; preload" }]
+        : []),
+    ];
+
+    return [{ source: "/(.*)", headers: securityHeaders }];
   },
 
   async redirects() {

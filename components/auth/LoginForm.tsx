@@ -14,8 +14,16 @@ export function LoginForm({ callbackUrl, googleEnabled = false }: LoginFormProps
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Where to go after successful login
-  const redirectTo = callbackUrl && callbackUrl !== "/" ? callbackUrl : "/dashboard/profile";
+  // Security: validate callbackUrl is relative to prevent open-redirect attacks.
+  // e.g. ?callbackUrl=https://evil.com must be rejected.
+  function isSafeCallbackUrl(url?: string): boolean {
+    if (!url) return false;
+    // Must start with "/" but NOT "//" (protocol-relative = external)
+    return url.startsWith("/") && !url.startsWith("//");
+  }
+
+  // Default: home page. Keep callbackUrl only if it's a safe relative path.
+  const redirectTo = isSafeCallbackUrl(callbackUrl) ? callbackUrl! : "/";
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

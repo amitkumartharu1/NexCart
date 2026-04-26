@@ -1,29 +1,62 @@
 "use client";
 
-import { useActionState } from "react";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
+import { signIn } from "next-auth/react";
 import { registerAction } from "@/lib/auth/actions";
 import type { ActionResult } from "@/types";
 
 const initialState: ActionResult = { success: false };
 
 export function RegisterForm() {
-  const router = useRouter();
   const [state, action, isPending] = useActionState(registerAction, initialState);
+  const [signingIn, setSigningIn] = useState(false);
 
+  // Capture credentials locally so we can auto-sign-in after server action succeeds
+  const credsRef = useRef<{ email: string; password: string } | null>(null);
+
+  // Intercept form submit to capture values before server action runs
+  function handleBeforeSubmit(e: React.FormEvent<HTMLFormElement>) {
+    const fd = new FormData(e.currentTarget);
+    credsRef.current = {
+      email:    (fd.get("email")    as string) ?? "",
+      password: (fd.get("password") as string) ?? "",
+    };
+  }
+
+  // After account created: auto sign-in → home page
   useEffect(() => {
-    if (state.success) {
-      // Redirect to login with success message
-      router.push("/auth/login?registered=1");
+    if (!state.success) return;
+    const creds = credsRef.current;
+    setSigningIn(true);
+
+    if (creds?.email && creds?.password) {
+      signIn("credentials", {
+        email:    creds.email,
+        password: creds.password,
+        redirect: false,
+      }).then((res) => {
+        window.location.href = res?.ok ? "/" : "/auth/login?registered=1";
+      }).catch(() => {
+        window.location.href = "/auth/login?registered=1";
+      });
+    } else {
+      window.location.href = "/auth/login?registered=1";
     }
-  }, [state.success, router]);
+  }, [state.success]);
+
+  const showLoading = isPending || signingIn;
 
   return (
-    <form action={action} className="space-y-5">
+    <form action={action} onSubmit={handleBeforeSubmit} className="space-y-5">
       {state.error && (
         <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {state.error}
+        </div>
+      )}
+
+      {signingIn && (
+        <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-400">
+          Account created! Signing you in…
         </div>
       )}
 
@@ -38,7 +71,7 @@ export function RegisterForm() {
             type="text"
             autoComplete="given-name"
             required
-            disabled={isPending}
+            disabled={showLoading}
             className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20 disabled:opacity-50"
             placeholder="John"
           />
@@ -56,7 +89,7 @@ export function RegisterForm() {
             type="text"
             autoComplete="family-name"
             required
-            disabled={isPending}
+            disabled={showLoading}
             className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20 disabled:opacity-50"
             placeholder="Doe"
           />
@@ -75,7 +108,7 @@ export function RegisterForm() {
           name="phone"
           type="tel"
           autoComplete="tel"
-          disabled={isPending}
+          disabled={showLoading}
           className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20 disabled:opacity-50"
           placeholder="+977 98XXXXXXXX"
         />
@@ -94,7 +127,7 @@ export function RegisterForm() {
           type="email"
           autoComplete="email"
           required
-          disabled={isPending}
+          disabled={showLoading}
           className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20 disabled:opacity-50"
           placeholder="you@example.com"
         />
@@ -113,7 +146,7 @@ export function RegisterForm() {
           type="password"
           autoComplete="new-password"
           required
-          disabled={isPending}
+          disabled={showLoading}
           className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20 disabled:opacity-50"
           placeholder="••••••••"
         />
@@ -136,7 +169,7 @@ export function RegisterForm() {
           type="password"
           autoComplete="new-password"
           required
-          disabled={isPending}
+          disabled={showLoading}
           className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-2 focus:ring-ring/20 disabled:opacity-50"
           placeholder="••••••••"
         />
@@ -147,10 +180,10 @@ export function RegisterForm() {
 
       <button
         type="submit"
-        disabled={isPending}
+        disabled={showLoading}
         className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
       >
-        {isPending ? "Creating account…" : "Create account"}
+        {signingIn ? "Signing you in…" : isPending ? "Creating account…" : "Create account"}
       </button>
 
       <p className="text-center text-xs text-muted-foreground">

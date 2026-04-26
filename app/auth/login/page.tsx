@@ -8,11 +8,11 @@ export const metadata: Metadata = {
 };
 
 interface LoginPageProps {
-  searchParams: Promise<{ callbackUrl?: string; error?: string }>;
+  searchParams: Promise<{ callbackUrl?: string; error?: string; registered?: string }>;
 }
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
-  const { callbackUrl, error } = await searchParams;
+  const { callbackUrl, error, registered } = await searchParams;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
@@ -31,6 +31,13 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             Sign in to your account to continue
           </p>
         </div>
+
+        {/* Success banner after registration (fallback if auto-login fails) */}
+        {registered === "1" && !error && (
+          <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-400">
+            Account created successfully! Sign in below to continue.
+          </div>
+        )}
 
         {/* Error from OAuth / middleware */}
         {error && (
