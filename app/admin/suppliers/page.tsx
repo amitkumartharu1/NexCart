@@ -21,7 +21,13 @@ interface Supplier {
   createdAt: string;
 }
 
-const EMPTY: Omit<Supplier, "id" | "createdAt"> = {
+// Form uses plain strings (no nulls) so inputs/textareas work without ?? guards
+interface SupplierForm {
+  name: string; logo: string; description: string; website: string;
+  country: string; sortOrder: number; isActive: boolean; isFeatured: boolean;
+}
+
+const EMPTY: SupplierForm = {
   name: "", logo: "", description: "", website: "",
   country: "", sortOrder: 0, isActive: true, isFeatured: false,
 };
@@ -89,7 +95,7 @@ export default function AdminSuppliersPage() {
     setIsNew(false);
   }
   function closePanel() { setEditing(null); setIsNew(false); }
-  function set(k: keyof typeof EMPTY, v: string | number | boolean) {
+  function set(k: keyof SupplierForm, v: string | number | boolean) {
     setForm((p) => ({ ...p, [k]: v }));
   }
 
@@ -244,22 +250,22 @@ export default function AdminSuppliersPage() {
               <input value={form.name} onChange={(e) => set("name", e.target.value)} placeholder="e.g. Samsung" className={inputCls} />
             </Field>
             <Field label="Logo URL" hint="URL to supplier logo image">
-              <input value={form.logo ?? ""} onChange={(e) => set("logo", e.target.value)} placeholder="https://..." className={inputCls} />
+              <input value={form.logo} onChange={(e) => set("logo", e.target.value)} placeholder="https://..." className={inputCls} />
             </Field>
             <Field label="Description">
-              <textarea value={form.description ?? ""} onChange={(e) => set("description", e.target.value)}
+              <textarea value={form.description} onChange={(e) => set("description", e.target.value)}
                 rows={2} placeholder="Brief description…" className={inputCls + " resize-none"} />
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Country">
-                <input value={form.country ?? ""} onChange={(e) => set("country", e.target.value)} placeholder="Nepal" className={inputCls} />
+                <input value={form.country} onChange={(e) => set("country", e.target.value)} placeholder="Nepal" className={inputCls} />
               </Field>
               <Field label="Sort Order">
                 <input type="number" value={form.sortOrder} onChange={(e) => set("sortOrder", parseInt(e.target.value) || 0)} className={inputCls} />
               </Field>
             </div>
             <Field label="Website">
-              <input value={form.website ?? ""} onChange={(e) => set("website", e.target.value)} placeholder="https://..." className={inputCls} />
+              <input value={form.website} onChange={(e) => set("website", e.target.value)} placeholder="https://..." className={inputCls} />
             </Field>
             <div className="flex gap-4">
               <label className="flex items-center gap-2 cursor-pointer select-none">
