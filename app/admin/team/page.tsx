@@ -3,8 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import {
   Users, Plus, Pencil, Trash2, Eye, EyeOff,
-  Search, RefreshCw, X, Linkedin, Twitter, Mail,
-  GripVertical, Star,
+  Search, RefreshCw, X, Mail, GripVertical, Star,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
