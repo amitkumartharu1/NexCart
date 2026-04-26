@@ -23,7 +23,14 @@ interface TeamMember {
   createdAt: string;
 }
 
-const EMPTY: Omit<TeamMember, "id" | "createdAt"> = {
+// Form uses plain strings (no nulls) so inputs/textareas accept the values directly
+interface TeamMemberForm {
+  name: string; role: string; bio: string; image: string;
+  email: string; linkedin: string; twitter: string;
+  sortOrder: number; isActive: boolean; isFeatured: boolean;
+}
+
+const EMPTY: TeamMemberForm = {
   name: "", role: "", bio: "", image: "",
   email: "", linkedin: "", twitter: "",
   sortOrder: 0, isActive: true, isFeatured: false,
@@ -112,7 +119,7 @@ export default function AdminTeamPage() {
     setIsNew(false);
   }
   function closePanel() { setEditing(null); setIsNew(false); }
-  function set(k: keyof typeof EMPTY, v: string | number | boolean) {
+  function set(k: keyof TeamMemberForm, v: string | number | boolean) {
     setForm((p) => ({ ...p, [k]: v }));
   }
 
