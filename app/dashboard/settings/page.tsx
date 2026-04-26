@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { KeyRound, Bell, Moon, Eye, EyeOff, Save } from "lucide-react";
+import { KeyRound, Bell, Moon, Eye, EyeOff, Save, Trash2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { signOut } from "next-auth/react";
 
 export default function SettingsPage() {
   // Change Password
@@ -76,6 +77,35 @@ export default function SettingsPage() {
     localStorage.setItem("pref_order_updates", String(orderUpdates));
     localStorage.setItem("pref_promotions", String(promotions));
     toast.success("Preferences saved");
+  };
+
+  // Delete Account
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletePassword, setDeletePassword]   = useState("");
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deletingAccount, setDeletingAccount] = useState(false);
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText !== "DELETE") {
+      toast.error('Please type "DELETE" to confirm');
+      return;
+    }
+    setDeletingAccount(true);
+    try {
+      const res = await fetch("/api/dashboard/account", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: deletePassword }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Failed to delete account");
+      toast.success("Account deleted. Goodbye!");
+      await signOut({ callbackUrl: "/" });
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete account");
+    } finally {
+      setDeletingAccount(false);
+    }
   };
 
   const inputClass =
@@ -245,6 +275,101 @@ export default function SettingsPage() {
           </p>
         </div>
       </div>
+
+      {/* Danger Zone — Delete Account */}
+      <div className="bg-background rounded-xl border border-destructive/40 p-6 space-y-4">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-xl bg-destructive/10 flex items-center justify-center">
+            <Trash2 size={16} className="text-destructive" />
+          </div>
+          <div>
+            <h2 className="text-base font-semibold text-foreground">Danger Zone</h2>
+            <p className="text-xs text-foreground-muted">
+              Irreversible actions — proceed with caution
+            </p>
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Delete My Account</p>
+              <p className="text-xs text-foreground-muted mt-1 max-w-sm">
+                Permanently removes your account, profile, reviews, cart, and wishlist.
+                Orders are anonymized for financial records. This action cannot be undone.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-lg border border-destructive text-destructive text-sm font-semibold hover:bg-destructive hover:text-destructive-foreground transition-colors"
+            >
+              <Trash2 size={13} />
+              Delete Account
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Delete Account Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-background rounded-2xl border border-border shadow-xl w-full max-w-md p-6 space-y-5">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-destructive/10 flex items-center justify-center shrink-0">
+                <AlertTriangle size={20} className="text-destructive" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground text-lg">Delete Account</h3>
+                <p className="text-xs text-foreground-muted">This action is permanent and cannot be undone.</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">
+                  Confirm your password
+                </label>
+                <input
+                  type="password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  placeholder="Enter your current password"
+                  className={inputClass}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">
+                  Type <strong className="text-destructive">DELETE</strong> to confirm
+                </label>
+                <input
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder="DELETE"
+                  className={inputClass}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => { setShowDeleteModal(false); setDeletePassword(""); setDeleteConfirmText(""); }}
+                className="flex-1 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-background-subtle transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deletingAccount || deleteConfirmText !== "DELETE" || !deletePassword}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg bg-destructive text-destructive-foreground text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                <Trash2 size={13} />
+                {deletingAccount ? "Deleting…" : "Yes, Delete My Account"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

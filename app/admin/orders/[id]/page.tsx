@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   XCircle,
   ExternalLink,
+  Printer,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatCurrency, formatDateTime } from "@/lib/utils/format";
@@ -325,6 +326,15 @@ export default function AdminOrderDetailPage({
         >
           {order.status.replace(/_/g, " ")}
         </span>
+        <a
+          href={`/admin/orders/${order.id}/invoice`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-foreground-muted text-xs font-medium hover:text-foreground hover:bg-background-subtle transition-colors"
+        >
+          <Printer size={13} />
+          Invoice
+        </a>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

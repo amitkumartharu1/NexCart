@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Search, AlertTriangle, Package, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, AlertTriangle, Package, RefreshCw, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -33,6 +33,27 @@ export default function AdminInventoryPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [restockTarget, setRestockTarget] = useState<InventoryProduct | null>(null);
+  const [exporting, setExporting] = useState(false);
+
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const res = await fetch("/api/admin/inventory/export");
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href     = url;
+      a.download = `nexcart-inventory-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Inventory exported successfully");
+    } catch {
+      toast.error("Export failed. Please try again.");
+    } finally {
+      setExporting(false);
+    }
+  }
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -81,6 +102,14 @@ export default function AdminInventoryPage() {
           <h1 className="text-2xl font-bold text-foreground">Inventory</h1>
           <p className="text-sm text-foreground-muted mt-0.5">Monitor stock levels across all products</p>
         </div>
+        <button
+          onClick={handleExport}
+          disabled={exporting}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-colors disabled:opacity-60"
+        >
+          <Download size={14} />
+          {exporting ? "Exporting…" : "Export Excel"}
+        </button>
       </div>
 
       {/* Stats row */}
