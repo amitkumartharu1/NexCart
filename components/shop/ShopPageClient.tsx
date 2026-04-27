@@ -23,7 +23,7 @@ interface Product {
   id: string;
   name: string;
   slug: string;
-  basePrice: number;
+  price: number;
   comparePrice: number | null;
   rating?: number | null;
   reviewCount?: number;
@@ -114,7 +114,7 @@ function ProductCard({ product }: { product: Product }) {
 
   const image = product.images[0]?.url ? product.images[0] : null;
 
-  const base = Number(product.basePrice);
+  const base = Number(product.price);
   const compare = Number(product.comparePrice ?? 0);
   const discountPct =
     compare > base && base > 0
@@ -126,7 +126,7 @@ function ProductCard({ product }: { product: Product }) {
       productId: product.id,
       name: product.name,
       image: image?.url ?? "",
-      price: product.basePrice,
+      price: product.price,
       quantity: 1,
       maxQty: totalStock,
       slug: product.slug,
@@ -199,7 +199,7 @@ function ProductCard({ product }: { product: Product }) {
         {/* Price */}
         <div className="flex items-center gap-2 pt-0.5">
           <span className="text-base font-black" style={{ color: "#dc2626" }}>
-            {formatCurrency(product.basePrice)}
+            {formatCurrency(product.price)}
           </span>
           {compare > base && base > 0 && (
             <span className="text-xs font-medium line-through" style={{ color: "#555" }}>

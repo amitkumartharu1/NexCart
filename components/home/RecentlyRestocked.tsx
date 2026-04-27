@@ -16,7 +16,7 @@ interface Product {
   id: string;
   name: string;
   slug: string;
-  basePrice: number;
+  price: number;
   comparePrice: number | null;
   rating: number | null;
   reviewCount: number;
@@ -64,7 +64,7 @@ export function RecentlyRestocked() {
       productId: product.id,
       name: product.name,
       image: product.images[0]?.url ?? "",
-      price: product.basePrice,
+      price: product.price,
       quantity: 1,
       maxQty: stock,
       slug: product.slug,
@@ -171,16 +171,16 @@ export function RecentlyRestocked() {
                       <div className="flex items-baseline gap-2">
                         {/* New price — RED, bold */}
                         <span className="text-lg font-black" style={{ color: "#dc2626" }}>
-                          {formatCurrency(product.basePrice)}
+                          {formatCurrency(product.price)}
                         </span>
                         {/* Old price — gray strikethrough */}
-                        {product.comparePrice && product.comparePrice > product.basePrice && (
+                        {product.comparePrice && product.comparePrice > product.price && (
                           <>
                             <span className="text-sm font-medium line-through" style={{ color: "#9ca3af" }}>
                               {formatCurrency(product.comparePrice)}
                             </span>
                             <span className="text-xs font-bold px-1.5 py-0.5 rounded-full text-white" style={{ background: "#dc2626" }}>
-                              -{Math.round(((product.comparePrice - product.basePrice) / product.comparePrice) * 100)}%
+                              -{Math.round(((product.comparePrice - product.price) / product.comparePrice) * 100)}%
                             </span>
                           </>
                         )}

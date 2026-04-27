@@ -15,7 +15,7 @@ interface Product {
   id: string;
   name: string;
   slug: string;
-  basePrice: number;
+  price: number;
   comparePrice: number | null;
   rating?: number | null;
   reviewCount?: number;
@@ -32,8 +32,8 @@ const BADGE_STYLES: Record<string, string> = {
 };
 
 function getBadge(p: Product): { label: string; style: string } | null {
-  if (p.comparePrice && p.comparePrice > p.basePrice) {
-    const pct = Math.round(((p.comparePrice - p.basePrice) / p.comparePrice) * 100);
+  if (p.comparePrice && p.comparePrice > p.price) {
+    const pct = Math.round(((p.comparePrice - p.price) / p.comparePrice) * 100);
     return { label: `-${pct}% OFF`, style: "bg-red-500 text-white border-red-600" };
   }
   if (p.isFeatured) return { label: "Best Seller", style: "bg-amber-500/90 text-white border-amber-600" };
@@ -41,8 +41,8 @@ function getBadge(p: Product): { label: string; style: string } | null {
 }
 
 function getDiscountPct(p: Product): number {
-  if (!p.comparePrice || p.comparePrice <= p.basePrice) return 0;
-  return Math.round(((p.comparePrice - p.basePrice) / p.comparePrice) * 100);
+  if (!p.comparePrice || p.comparePrice <= p.price) return 0;
+  return Math.round(((p.comparePrice - p.price) / p.comparePrice) * 100);
 }
 
 /* Deterministic urgency seeds per card slot (no Math.random — SSR safe) */
@@ -102,7 +102,7 @@ export function TrendingProducts() {
       productId: product.id,
       name: product.name,
       slug: product.slug,
-      price: product.basePrice,
+      price: product.price,
       image: product.images[0]?.url ?? undefined,
       quantity: 1,
       maxQty: stock,
@@ -252,9 +252,9 @@ export function TrendingProducts() {
                     {/* ── Price Psychology ── */}
                     <div className="flex items-baseline gap-2 pt-0.5">
                       <span className="text-base font-black" style={{ color: "#dc2626" }}>
-                        {formatCurrency(product.basePrice)}
+                        {formatCurrency(product.price)}
                       </span>
-                      {product.comparePrice && product.comparePrice > product.basePrice && (
+                      {product.comparePrice && product.comparePrice > product.price && (
                         <span className="text-xs font-medium line-through" style={{ color: "#9ca3af" }}>
                           {formatCurrency(product.comparePrice)}
                         </span>
