@@ -2,10 +2,10 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db/prisma";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import { BillPrintToolbar } from "@/components/admin/billing/BillPrintToolbar";
 
 interface Props {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ print?: string }>;
 }
 
 async function getBill(id: string) {
@@ -29,12 +29,11 @@ function formatDateTime(d: Date | string) {
   });
 }
 
-export default async function BillPrintPage({ params, searchParams }: Props) {
+export default async function BillPrintPage({ params }: Props) {
   const session = await auth();
   if (!session?.user) redirect("/auth/login");
 
-  const { id }    = await params;
-  const { print } = await searchParams;
+  const { id } = await params;
   const bill = await getBill(id);
   if (!bill) notFound();
 
@@ -54,24 +53,8 @@ export default async function BillPrintPage({ params, searchParams }: Props) {
         body { font-family: 'Segoe UI', Arial, sans-serif; }
       `}</style>
 
-      {/* Toolbar — hidden on print */}
-      <div className="no-print flex items-center gap-3 mb-6 p-4 bg-background border-b border-border">
-        <button
-          onClick={() => window.history.back()}
-          className="flex items-center gap-2 px-3 py-1.5 text-sm border border-border rounded-lg text-foreground-muted hover:text-foreground"
-        >
-          ← Back
-        </button>
-        <button
-          onClick={() => window.print()}
-          className="flex items-center gap-2 px-4 py-1.5 text-sm bg-primary text-primary-foreground rounded-lg font-semibold hover:opacity-90"
-        >
-          🖨 Print
-        </button>
-        <span className="text-sm text-foreground-muted">
-          Use your browser&apos;s &quot;Save as PDF&quot; option in the print dialog to download as PDF.
-        </span>
-      </div>
+      {/* Toolbar — hidden on print (client component handles onClick) */}
+      <BillPrintToolbar />
 
       {/* Invoice */}
       <div
@@ -104,7 +87,7 @@ export default async function BillPrintPage({ params, searchParams }: Props) {
           </div>
           <div className="text-right">
             <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Served By</div>
-            <div className="font-semibold text-gray-800">{bill.staff.name ?? bill.staff.email}</div>
+            <div className="font-semibold text-gray-800">{bill.staff?.name ?? bill.staff?.email ?? "—"}</div>
             <div className="text-sm text-gray-500">{formatDateTime(bill.createdAt)}</div>
           </div>
         </div>
@@ -204,10 +187,7 @@ export default async function BillPrintPage({ params, searchParams }: Props) {
         </div>
       </div>
 
-      {/* Auto-print if ?print=1 */}
-      {print === "1" && (
-        <script dangerouslySetInnerHTML={{ __html: "window.onload = function(){ window.print(); };" }} />
-      )}
+      {/* Auto-print is handled by BillPrintToolbar client component */}
     </>
   );
 }

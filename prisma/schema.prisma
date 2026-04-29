@@ -778,7 +778,7 @@ model Notification {
 model Bill {
   id             String     @id @default(cuid())
   billNumber     String     @unique
-  staffId        String
+  staffId        String?
   customerName   String?
   customerPhone  String?
   subtotal       Decimal    @db.Decimal(10, 2)
@@ -791,7 +791,7 @@ model Bill {
   isPaid         Boolean    @default(true)
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
-  staff          User       @relation("StaffBills", fields: [staffId], references: [id])
+  staff          User?      @relation("StaffBills", fields: [staffId], references: [id], onDelete: SetNull)
   items          BillItem[]
 
   @@index([billNumber])
@@ -1082,7 +1082,7 @@ model LoginAttempt {
 
 model AdminActivityLog {
   id          String   @id @default(cuid())
-  userId      String
+  userId      String?
   action      String
   description String
   resource    String?
@@ -1090,7 +1090,7 @@ model AdminActivityLog {
   ipAddress   String?
   userAgent   String?
   createdAt   DateTime @default(now())
-  user        User     @relation(fields: [userId], references: [id])
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([createdAt])
