@@ -8,7 +8,9 @@ import {
   ChevronRight,
   ShoppingBag,
   RefreshCw,
+  Trash2,
 } from "lucide-react";
+import { useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import { formatCurrency, formatDate } from "@/lib/utils/format";
 import { toast } from "sonner";
@@ -84,9 +86,13 @@ const ORDER_STATUSES: OrderStatus[] = [
 ];
 
 const LIMIT = 20;
+const DELETABLE: OrderStatus[] = ["CANCELLED", "FAILED"];
 
 export function AdminOrdersTable() {
   const router = useRouter();
+  const { data: session } = useSession();
+  const canDelete = ["SUPER_ADMIN", "ADMIN"].includes(session?.user?.role ?? "");
+
   const [orders, setOrders] = useState<Order[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,
@@ -98,6 +104,8 @@ export function AdminOrdersTable() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [page, setPage] = useState(1);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<Order | null>(null);
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
@@ -136,8 +144,59 @@ export function AdminOrdersTable() {
     router.push(`/admin/orders/${id}`);
   };
 
+  const handleDelete = async (order: Order) => {
+    setDeletingId(order.id);
+    try {
+      const res = await fetch(`/api/admin/orders/${order.id}`, { method: "DELETE" });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        toast.success(`Order #${order.orderNumber} deleted successfully`);
+        setConfirmDelete(null);
+        fetchOrders();
+      } else {
+        toast.error(data?.error ?? "Failed to delete order");
+      }
+    } catch {
+      toast.error("Failed to delete order, please try again");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   return (
     <div className="space-y-4">
+      {/* ── Confirm-delete modal ── */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-background rounded-2xl border border-border shadow-2xl w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center gap-3 text-destructive">
+              <Trash2 size={22} />
+              <h3 className="font-bold text-lg">Delete Order</h3>
+            </div>
+            <p className="text-sm text-foreground-muted">
+              Permanently delete order{" "}
+              <span className="font-semibold text-foreground">#{confirmDelete.orderNumber}</span>{" "}
+              ({confirmDelete.status})? This action cannot be undone.
+            </p>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => handleDelete(confirmDelete)}
+                disabled={!!deletingId}
+                className="flex-1 py-2 rounded-lg bg-destructive text-destructive-foreground text-sm font-semibold disabled:opacity-50 hover:opacity-90 transition-opacity"
+              >
+                {deletingId === confirmDelete.id ? "Deleting…" : "Yes, Delete"}
+              </button>
+              <button
+                onClick={() => setConfirmDelete(null)}
+                className="flex-1 py-2 rounded-lg border border-border text-sm text-foreground-muted hover:text-foreground transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1 max-w-sm">
@@ -207,6 +266,9 @@ export function AdminOrdersTable() {
                 <th className="text-left px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wide">
                   Date
                 </th>
+                {canDelete && (
+                  <th className="px-4 py-3 text-xs font-semibold text-foreground-muted uppercase tracking-wide" />
+                )}
               </tr>
             </thead>
             <tbody>
@@ -324,6 +386,20 @@ export function AdminOrdersTable() {
                       <td className="px-4 py-3 text-foreground-muted text-xs whitespace-nowrap">
                         {formatDate(order.createdAt)}
                       </td>
+                      {canDelete && (
+                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                          {DELETABLE.includes(order.status) && (
+                            <button
+                              onClick={() => setConfirmDelete(order)}
+                              disabled={deletingId === order.id}
+                              className="w-7 h-7 inline-flex items-center justify-center rounded-md text-foreground-muted hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-40"
+                              title="Delete order"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   );
                 })

@@ -7,7 +7,7 @@ import {
   Tag, Layers, Star, TicketPercent, FileText, Image,
   Wrench, BarChart3, Shield, ChevronDown, ChevronRight,
   RefreshCw, BookOpen, MessageSquare, Globe, Quote,
-  Phone, Building2, Home,
+  Phone, Building2, Home, ReceiptText,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -56,6 +56,12 @@ const NAV_ITEMS: NavItem[] = [
     label: "Orders",
     href: "/admin/orders",
     icon: ShoppingCart,
+    roles: ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF"],
+  },
+  {
+    label: "Billing / POS",
+    href: "/admin/billing",
+    icon: ReceiptText,
     roles: ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF"],
   },
   {

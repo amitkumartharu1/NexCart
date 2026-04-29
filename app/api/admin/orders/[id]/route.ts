@@ -6,6 +6,10 @@ import { z } from "zod";
 
 const ADMIN_ROLES  = ["SUPER_ADMIN", "ADMIN", "MANAGER", "STAFF"] as const;
 const WRITE_ROLES  = ["SUPER_ADMIN", "ADMIN", "MANAGER"] as const;
+const DELETE_ROLES = ["SUPER_ADMIN", "ADMIN"] as const;
+
+// Only these statuses may be permanently deleted
+const DELETABLE_STATUSES = ["CANCELLED", "FAILED"] as const;
 
 const UpdateOrderSchema = z.object({
   status: z
@@ -129,4 +133,52 @@ export async function PATCH(
   });
 
   return NextResponse.json({ order });
+}
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth();
+  if (!session?.user || !DELETE_ROLES.includes(session.user.role as typeof DELETE_ROLES[number])) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const { id } = await params;
+
+  // Fetch order to verify it exists and is in a deletable state
+  const order = await prisma.order.findUnique({
+    where: { id },
+    select: { id: true, status: true, orderNumber: true },
+  });
+
+  if (!order) return NextResponse.json({ error: "Order not found" }, { status: 404 });
+
+  if (!DELETABLE_STATUSES.includes(order.status as typeof DELETABLE_STATUSES[number])) {
+    return NextResponse.json(
+      { error: `Only Cancelled or Failed orders can be deleted. This order is ${order.status}.` },
+      { status: 422 }
+    );
+  }
+
+  try {
+    await prisma.order.delete({ where: { id } });
+
+    // Log the deletion
+    await prisma.adminActivityLog.create({
+      data: {
+        userId:      session.user.id,
+        action:      "DELETE_ORDER",
+        description: `Deleted order #${order.orderNumber} (status: ${order.status})`,
+        resource:    "Order",
+        resourceId:  id,
+        ipAddress:   _req.headers.get("x-forwarded-for") ?? undefined,
+      },
+    }).catch(() => {}); // Non-fatal — never block the response
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("[DELETE /api/admin/orders/[id]]", err);
+    return NextResponse.json({ error: "Failed to delete order" }, { status: 500 });
+  }
 }
