@@ -503,8 +503,9 @@ export function AdminUsersTable() {
             </div>
 
             <p className="text-sm text-foreground-muted">
-              Permanently deletes this account and all associated data — reviews,
-              addresses, wishlist, and cart. Orders will be anonymised and kept for records.
+              Permanently deletes this account and all associated data — orders,
+              reviews, bookings, tickets, addresses, wishlist, and cart. This
+              action cannot be undone.
             </p>
 
             <div className="flex gap-3 pt-1">

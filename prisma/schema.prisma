@@ -463,7 +463,7 @@ model ServiceBooking {
   updatedAt     DateTime        @updatedAt
   package       ServicePackage? @relation(fields: [packageId], references: [id])
   service       Service         @relation(fields: [serviceId], references: [id])
-  user          User            @relation(fields: [userId], references: [id])
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([serviceId])
@@ -537,7 +537,7 @@ model Order {
   statusHistory     OrderStatusHistory[]
   address           Address?             @relation(fields: [addressId], references: [id])
   coupon            Coupon?              @relation(fields: [couponId], references: [id])
-  user              User                 @relation(fields: [userId], references: [id])
+  user              User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   payments          Payment[]
 
   @@index([orderNumber])
@@ -617,7 +617,7 @@ model Invoice {
   pdfUrl        String?
   notes         String?
   metadata      Json?
-  order         Order     @relation(fields: [orderId], references: [id])
+  order         Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@map("invoices")
 }
@@ -663,7 +663,7 @@ model Review {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  user         User     @relation(fields: [userId], references: [id])
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([productId, userId])
   @@index([productId])
@@ -734,7 +734,7 @@ model SupportTicket {
   closedAt   DateTime?
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
-  user       User           @relation(fields: [userId], references: [id])
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   replies    TicketReply[]
 
   @@index([userId])

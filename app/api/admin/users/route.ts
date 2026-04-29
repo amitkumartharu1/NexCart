@@ -90,27 +90,17 @@ export async function DELETE(req: NextRequest) {
   }
 
   try {
-    // Use a transaction to delete all related records that don't have onDelete: Cascade
-    // (Account, Session, Cart, Wishlist, CompareList, Notification, Address all have Cascade)
     await prisma.$transaction(async (tx) => {
-      // Nullify bills created by this staff member (onDelete: SetNull on Bill.staffId)
+      // Nullify bills where this user was the staff (onDelete: SetNull) — keeps bill records
       await tx.bill.updateMany({ where: { staffId: userId }, data: { staffId: null } });
 
-      // Nullify admin activity logs for this user (onDelete: SetNull on AdminActivityLog.userId)
+      // Nullify admin activity logs (onDelete: SetNull) — preserves audit trail
       await tx.adminActivityLog.updateMany({ where: { userId }, data: { userId: null } });
 
-      // Delete or nullify records that use RESTRICT by default (no explicit cascade in schema)
-      await tx.review.deleteMany({ where: { userId } });
-      await tx.orderStatusHistory.deleteMany({
-        where: { order: { userId } },
-      });
-      await tx.order.deleteMany({ where: { userId } });
-      await tx.serviceBooking.deleteMany({ where: { userId } });
-      await tx.ticketReply.deleteMany({ where: { ticket: { userId } } });
-      await tx.supportTicket.deleteMany({ where: { userId } });
-
-      // Now delete the user (Cascade handles: Account, Session, Cart, Wishlist,
-      // CompareList, Notification, Address, LoginAttempt, AuditLog, etc.)
+      // Delete the user — onDelete: Cascade handles everything else:
+      //   Account, Session, Cart, Wishlist, CompareList, Notification, Address,
+      //   LoginAttempt, AuditLog (AuditActor), Order → Invoice/OrderItem/Payment/
+      //   OrderStatusHistory, Review, ServiceBooking, SupportTicket → TicketReply
       await tx.user.delete({ where: { id: userId } });
     });
 
