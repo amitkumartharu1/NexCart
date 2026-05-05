@@ -1,7 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Serve modern image formats — avif ~50% smaller than jpeg, webp ~30% smaller
   images: {
+    formats: ["image/avif", "image/webp"],
+    // Cache optimised images for 7 days (default is 60s)
+    minimumCacheTTL: 60 * 60 * 24 * 7,
     remotePatterns: [
       // Known CDNs / OAuth avatars
       { protocol: "https", hostname: "res.cloudinary.com" },
@@ -16,6 +20,12 @@ const nextConfig: NextConfig = {
       { protocol: "http",  hostname: "**" },
     ],
   },
+
+  // Strip "X-Powered-By: Next.js" header (avoid fingerprinting)
+  poweredByHeader: false,
+
+  // Gzip compress all responses
+  compress: true,
 
   // Prevent these Node.js-only packages from being bundled into
   // Server Components or the Edge runtime by Turbopack/webpack.
@@ -46,13 +56,15 @@ const nextConfig: NextConfig = {
     const cspDirectives = [
       "default-src 'self'",
       isDev
-        ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'"
-        : "script-src 'self' 'unsafe-inline'",
+        ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com"
+        : "script-src 'self' 'unsafe-inline' https://js.stripe.com",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https://res.cloudinary.com https://lh3.googleusercontent.com https://avatars.githubusercontent.com https://picsum.photos https://fastly.picsum.photos https://images.unsplash.com https://*.cloudinary.com",
       "font-src 'self' data:",
-      "connect-src 'self' https://api.cloudinary.com https://accounts.google.com",
-      "frame-src 'none'",
+      // connect-src: self + CDN uploads + OAuth + payment gateways
+      "connect-src 'self' https://api.cloudinary.com https://accounts.google.com https://rc-epay.esewa.com.np https://a.khalti.com https://api.stripe.com https://vercel.live",
+      // frame-src: Stripe uses iframes for card element; eSewa uses redirect (no frame)
+      "frame-src 'self' https://js.stripe.com https://hooks.stripe.com",
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
