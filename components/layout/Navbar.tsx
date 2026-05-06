@@ -33,6 +33,12 @@ export function Navbar() {
   // Close menus on route change
   useEffect(() => { setMobileOpen(false); setUserMenuOpen(false); }, [pathname]);
 
+  // Lock body scroll when mobile menu is open
+  useEffect(() => {
+    document.body.style.overflow = mobileOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [mobileOpen]);
+
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 

@@ -126,7 +126,7 @@ export default function CartPage() {
 
                 {/* Controls row */}
                 <div className="flex items-center justify-between mt-3">
-                  {/* Qty stepper */}
+                  {/* Qty stepper — min 44px touch targets (WCAG 2.5.5) */}
                   <div className="flex items-center border border-border rounded-lg overflow-hidden">
                     <button
                       onClick={() =>
@@ -136,10 +136,10 @@ export default function CartPage() {
                           item.variantId
                         )
                       }
-                      className="w-8 h-8 flex items-center justify-center hover:bg-background-subtle transition-colors text-foreground-muted hover:text-foreground"
+                      className="w-11 h-11 flex items-center justify-center hover:bg-background-subtle transition-colors text-foreground-muted hover:text-foreground"
                       aria-label="Decrease quantity"
                     >
-                      <Minus className="w-3.5 h-3.5" />
+                      <Minus className="w-4 h-4" />
                     </button>
                     <span className="w-10 text-center text-sm font-semibold text-foreground">
                       {item.quantity}
@@ -156,10 +156,10 @@ export default function CartPage() {
                         item.maxQty !== undefined &&
                         item.quantity >= item.maxQty
                       }
-                      className="w-8 h-8 flex items-center justify-center hover:bg-background-subtle transition-colors text-foreground-muted hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="w-11 h-11 flex items-center justify-center hover:bg-background-subtle transition-colors text-foreground-muted hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed"
                       aria-label="Increase quantity"
                     >
-                      <Plus className="w-3.5 h-3.5" />
+                      <Plus className="w-4 h-4" />
                     </button>
                   </div>
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { signOut } from "next-auth/react";
-import { Bell, LogOut, User, ChevronDown, Moon, Sun } from "lucide-react";
+import { Bell, LogOut, User, ChevronDown, Moon, Sun, Menu } from "lucide-react";
 import { useState } from "react";
 import { useTheme } from "next-themes";
 
@@ -12,6 +12,7 @@ interface Props {
     role: string;
     image?: string | null;
   };
+  onMenuClick?: () => void;
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -21,15 +22,26 @@ const ROLE_LABELS: Record<string, string> = {
   STAFF: "Staff",
 };
 
-export function AdminHeader({ user }: Props) {
+export function AdminHeader({ user, onMenuClick }: Props) {
   const [open, setOpen] = useState(false);
   const { theme, setTheme } = useTheme();
 
   return (
-    <header className="h-14 flex-shrink-0 border-b border-border bg-background flex items-center justify-between px-6">
-      {/* Breadcrumb placeholder */}
-      <div className="text-sm text-foreground-muted">
-        <span className="text-foreground font-medium">Admin Panel</span>
+    <header className="h-14 flex-shrink-0 border-b border-border bg-background flex items-center justify-between px-4 md:px-6">
+      {/* Left: hamburger (mobile) + title */}
+      <div className="flex items-center gap-2">
+        {onMenuClick && (
+          <button
+            onClick={onMenuClick}
+            className="md:hidden w-9 h-9 flex items-center justify-center rounded-lg text-foreground-muted hover:text-foreground hover:bg-background-subtle transition-colors"
+            aria-label="Toggle sidebar"
+          >
+            <Menu size={20} />
+          </button>
+        )}
+        <div className="text-sm text-foreground-muted">
+          <span className="text-foreground font-medium">Admin Panel</span>
+        </div>
       </div>
 
       {/* Right side */}

@@ -146,7 +146,7 @@ export async function Footer() {
     <footer className="bg-background-subtle border-t border-border mt-auto">
       {/* Main footer */}
       <div className="container-wide py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 md:gap-8 lg:gap-10">
 
           {/* Brand column */}
           <div className="lg:col-span-2 space-y-5">

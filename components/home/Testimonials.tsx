@@ -146,7 +146,7 @@ function TestiCard({
     <div
       className="testi-card relative rounded-3xl overflow-hidden flex-shrink-0"
       style={{
-        width: 320,
+        width: "min(320px, 85vw)",
         background: "linear-gradient(145deg, rgba(255,255,255,0.055) 0%, rgba(255,255,255,0.02) 100%)",
         border: "1px solid rgba(255,255,255,0.08)",
         backdropFilter: "blur(20px)",
@@ -315,7 +315,7 @@ function TestiSkeleton() {
     <div
       className="flex-shrink-0 rounded-3xl overflow-hidden animate-pulse"
       style={{
-        width: 320,
+        width: "min(320px, 85vw)",
         height: 260,
         background: "rgba(255,255,255,0.04)",
         border: "1px solid rgba(255,255,255,0.06)",
